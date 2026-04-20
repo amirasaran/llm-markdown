@@ -1,16 +1,16 @@
 {
-  "name": "stream-markdown",
+  "name": "flowdown",
   "version": "0.1.0",
   "description": "Universal streaming markdown renderer for React and React Native, built for AI output.",
   "license": "MIT",
   "author": "Amir Asaran",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amirassaran/stream-markdown.git"
+    "url": "git+https://github.com/amirasaran/flowdown.git"
   },
-  "homepage": "https://github.com/amirassaran/stream-markdown#readme",
+  "homepage": "https://github.com/amirasaran/flowdown#readme",
   "bugs": {
-    "url": "https://github.com/amirassaran/stream-markdown/issues"
+    "url": "https://github.com/amirasaran/flowdown/issues"
   },
   "packageManager": "pnpm@10.20.0",
   "engines": {
@@ -58,8 +58,8 @@
     "test": "vitest run",
     "version": "changeset version",
     "release": "pnpm build && changeset publish",
-    "example:web": "pnpm --filter stream-markdown-example-web dev",
-    "example:native": "pnpm --filter stream-markdown-example-native start"
+    "example:web": "pnpm --filter flowdown-example-web dev",
+    "example:native": "pnpm --filter flowdown-example-native start"
   },
   "peerDependencies": {
     "react": ">=18.0.0",

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { StreamMarkdown, darkTheme } from 'stream-markdown/web';
-import type { DirectiveRegistry } from 'stream-markdown/web';
+import { StreamMarkdown, darkTheme } from 'flowdown/web';
+import type { DirectiveRegistry } from 'flowdown/web';
 import { Chart } from '../directives/Chart';
 import { Callout } from '../directives/Callout';
 import { FONT_STACK, MONO_STACK } from '../fonts';
@@ -116,7 +116,7 @@ export function MessageBubble({
           after={
             settings.showAfter ? (
               <div style={{ fontSize: 11, color: c.textMuted, fontStyle: 'italic' }}>
-                rendered by stream-markdown
+                rendered by flowdown
               </div>
             ) : undefined
           }

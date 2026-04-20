@@ -7,8 +7,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StreamMarkdown, darkTheme } from 'stream-markdown/native';
-import type { DirectiveRegistry } from 'stream-markdown/native';
+import { StreamMarkdown, darkTheme } from 'flowdown/native';
+import type { DirectiveRegistry } from 'flowdown/native';
 import { presets } from '../shared/demo-content';
 import { Chart } from './directives/Chart';
 import { Callout } from './directives/Callout';
@@ -172,7 +172,7 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
           after={
             settings.showAfter ? (
               <Text style={{ fontSize: 12, color: c.textMuted, fontStyle: 'italic' }}>
-                Rendered by stream-markdown
+                Rendered by flowdown
               </Text>
             ) : undefined
           }
@@ -268,7 +268,7 @@ function Header({
         >
           Playground
         </Text>
-        <Text style={{ color: c.text, fontSize: 16, fontWeight: '700' }}>stream-markdown</Text>
+        <Text style={{ color: c.text, fontSize: 16, fontWeight: '700' }}>flowdown</Text>
       </View>
       <Pressable
         onPress={onOpenChat}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { NodeRendererProps, CodeNode } from 'stream-markdown/web';
+import type { NodeRendererProps, CodeNode } from 'flowdown/web';
 
 /**
  * Custom code-block renderer used on the Docs page. Demonstrates the

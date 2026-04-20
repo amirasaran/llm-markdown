@@ -2,7 +2,7 @@
  * The full in-app documentation, written as markdown. Rendered by
  * StreamMarkdown itself — the library renders its own docs.
  */
-export const docsMarkdown = `# stream-markdown
+export const docsMarkdown = `# flowdown
 
 A universal **streaming markdown renderer** for React and React Native, built for AI output. Every rendered element in this page is produced by the library you are about to install — the docs **dogfood** the runtime.
 
@@ -21,18 +21,18 @@ A universal **streaming markdown renderer** for React and React Native, built fo
 
 \`\`\`bash
 # Web
-npm i stream-markdown react react-dom
+npm i flowdown react react-dom
 
 # React Native (with Expo or bare)
-npm i stream-markdown react react-native react-native-reanimated
+npm i flowdown react react-native react-native-reanimated
 \`\`\`
 
-The library is a single package with platform-specific exports — you import from \`stream-markdown/web\` or \`stream-markdown/native\` and the API is identical.
+The library is a single package with platform-specific exports — you import from \`flowdown/web\` or \`flowdown/native\` and the API is identical.
 
 ## Quick start — web
 
 \`\`\`tsx
-import { StreamMarkdown } from 'stream-markdown/web';
+import { StreamMarkdown } from 'flowdown/web';
 
 export function AssistantMessage({ text }: { text: string }) {
   return <StreamMarkdown text={text} streaming direction="auto" />;
@@ -42,7 +42,7 @@ export function AssistantMessage({ text }: { text: string }) {
 ## Quick start — React Native
 
 \`\`\`tsx
-import { StreamMarkdown } from 'stream-markdown/native';
+import { StreamMarkdown } from 'flowdown/native';
 
 export function AssistantMessage({ text }: { text: string }) {
   return <StreamMarkdown text={text} streaming direction="auto" />;
@@ -81,7 +81,7 @@ interface StreamMarkdownProps {
 The theme object deep-merges over the shipped \`defaultTheme\` / \`darkTheme\`. You only override what you care about:
 
 \`\`\`tsx
-import { StreamMarkdown, darkTheme } from 'stream-markdown/web';
+import { StreamMarkdown, darkTheme } from 'flowdown/web';
 
 <StreamMarkdown
   text={text}
@@ -127,7 +127,7 @@ interface Theme {
 ### Dark mode
 
 \`\`\`tsx
-import { StreamMarkdown, darkTheme } from 'stream-markdown/web';
+import { StreamMarkdown, darkTheme } from 'flowdown/web';
 
 <StreamMarkdown text={text} theme={darkTheme} />;
 \`\`\`
@@ -135,7 +135,7 @@ import { StreamMarkdown, darkTheme } from 'stream-markdown/web';
 Both \`defaultTheme\` and \`darkTheme\` are plain objects — you can import, clone, tweak, and pass. Or derive a custom palette:
 
 \`\`\`tsx
-import { defaultTheme, mergeTheme } from 'stream-markdown';
+import { defaultTheme, mergeTheme } from 'flowdown';
 
 const brandTheme = mergeTheme(defaultTheme, {
   colors: {
@@ -156,7 +156,7 @@ Every node type has a **default renderer** and can be replaced by passing an ent
 
 \`\`\`tsx
 import React from 'react';
-import type { NodeRendererProps } from 'stream-markdown/web';
+import type { NodeRendererProps } from 'flowdown/web';
 
 const MyLink = React.memo(
   function MyLink({ node, children, theme }: NodeRendererProps) {
@@ -240,7 +240,7 @@ Replace the entire renderer. You get the node (\`lang\`, \`value\`, \`streaming?
 
 \`\`\`tsx
 import React, { useState } from 'react';
-import type { NodeRendererProps, CodeNode } from 'stream-markdown/web';
+import type { NodeRendererProps, CodeNode } from 'flowdown/web';
 
 const MyCode = React.memo(
   function MyCode({ node, theme }: NodeRendererProps) {
@@ -341,7 +341,7 @@ optional body
 ### Registering a directive
 
 \`\`\`tsx
-import type { DirectiveComponentProps } from 'stream-markdown/web';
+import type { DirectiveComponentProps } from 'flowdown/web';
 
 function Chart({ attributes, value, theme }: DirectiveComponentProps) {
   // For opaque directives, body comes in as \`value\` (raw string).
@@ -463,7 +463,7 @@ Do **not** debounce upstream for the renderer's sake. Push every chunk:
 
 \`\`\`tsx
 import { useState, useEffect } from 'react';
-import { StreamMarkdown } from 'stream-markdown/web';
+import { StreamMarkdown } from 'flowdown/web';
 
 export function StreamedMessage({ prompt }: { prompt: string }) {
   const [text, setText] = useState('');
@@ -496,7 +496,7 @@ export function StreamedMessage({ prompt }: { prompt: string }) {
 When you want the AST without the default card:
 
 \`\`\`tsx
-import { useStreamMarkdown } from 'stream-markdown/web';
+import { useStreamMarkdown } from 'flowdown/web';
 
 function Raw({ text }: { text: string }) {
   const { tree } = useStreamMarkdown(text, {
@@ -566,7 +566,7 @@ On React Native, layout animations use Reanimated (optional peer dep); on web th
 
 ## Slash commands available in this demo
 
-The chat demo on this site supports slash commands for quick testing. Type \`/\` in the composer to filter. All live in [\`examples/shared/slash-commands.ts\`](https://github.com/amirassaran/stream-markdown/blob/main/examples/shared/slash-commands.ts).
+The chat demo on this site supports slash commands for quick testing. Type \`/\` in the composer to filter. All live in [\`examples/shared/slash-commands.ts\`](https://github.com/amirasaran/flowdown/blob/main/examples/shared/slash-commands.ts).
 
 \`\`\`
 /everything  /headings   /inline     /lists      /code
@@ -579,7 +579,7 @@ The chat demo on this site supports slash commands for quick testing. Type \`/\`
 
 ## API exports
 
-### From the root (\`stream-markdown\`)
+### From the root (\`flowdown\`)
 
 \`\`\`ts
 import {
@@ -597,10 +597,10 @@ import {
   type CardConfig, type CardAnimationPreset,
   type RootNode, type BlockNode, type InlineNode,
   type DirectiveNode, type Direction, type AnyNode,
-} from 'stream-markdown';
+} from 'flowdown';
 \`\`\`
 
-### From \`stream-markdown/web\`
+### From \`flowdown/web\`
 
 \`\`\`ts
 import {
@@ -608,10 +608,10 @@ import {
   useStreamMarkdown,
   defaultTheme, darkTheme,
   /* all the types above */
-} from 'stream-markdown/web';
+} from 'flowdown/web';
 \`\`\`
 
-### From \`stream-markdown/native\`
+### From \`flowdown/native\`
 
 \`\`\`ts
 import {
@@ -619,7 +619,7 @@ import {
   useStreamMarkdown,
   defaultTheme, darkTheme,
   /* all the types above */
-} from 'stream-markdown/native';
+} from 'flowdown/native';
 \`\`\`
 
 ---
@@ -647,5 +647,5 @@ import {
 
 - The **Playground** lets you toggle every prop live and paste your own markdown.
 - The **Chat demo** shows the library inside a WhatsApp-style conversation, with slash commands that inject preset messages.
-- The [GitHub repo](https://github.com/amirassaran/stream-markdown) contains the full source, tests, and more detailed docs in \`./docs\`.
+- The [GitHub repo](https://github.com/amirasaran/flowdown) contains the full source, tests, and more detailed docs in \`./docs\`.
 `;

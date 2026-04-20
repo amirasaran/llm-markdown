@@ -1,5 +1,5 @@
 import { View, Text } from 'react-native';
-import type { DirectiveComponentProps } from 'stream-markdown/native';
+import type { DirectiveComponentProps } from 'flowdown/native';
 
 interface ToneColors { bg: string; bar: string; fg: string; }
 

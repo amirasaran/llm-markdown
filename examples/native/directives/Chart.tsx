@@ -1,5 +1,5 @@
 import { View, Text } from 'react-native';
-import type { DirectiveComponentProps } from 'stream-markdown/native';
+import type { DirectiveComponentProps } from 'flowdown/native';
 import { chartPayload } from '../../shared/demo-content';
 
 export function Chart({ attributes, value, theme }: DirectiveComponentProps) {

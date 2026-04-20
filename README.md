@@ -1,11 +1,11 @@
-# stream-markdown
+# flowdown
 
 > Universal streaming markdown renderer for **React** and **React Native**, built for AI output.
 
 One package, two platforms, every visual fully overridable. Optimized for the streaming case that breaks most markdown renderers: partial tokens, unclosed blocks, mixed RTL/LTR content, and inline custom widgets like charts and canvases.
 
 ```tsx
-import { StreamMarkdown } from 'stream-markdown/web'; // or 'stream-markdown/native'
+import { StreamMarkdown } from 'flowdown/web'; // or 'flowdown/native'
 
 <StreamMarkdown
   text={aiStreamingText}
@@ -20,11 +20,11 @@ import { StreamMarkdown } from 'stream-markdown/web'; // or 'stream-markdown/nat
 
 ## Why this library
 
-| Problem with typical renderers                                        | How `stream-markdown` handles it                                                                     |
+| Problem with typical renderers                                        | How `flowdown` handles it                                                                     |
 | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Re-mount the whole tree on every token, dropping frames               | Stable content-hash node ids + `React.memo` — unchanged subtrees never re-render while streaming     |
 | Blank out when a code fence or table is half-written                  | Parser tolerates unclosed blocks and tags pending nodes with `streaming: true` so you can style them |
-| Need separate libraries for web and mobile                            | Single package, platform exports `stream-markdown/web` and `stream-markdown/native`                  |
+| Need separate libraries for web and mobile                            | Single package, platform exports `flowdown/web` and `flowdown/native`                  |
 | Custom widgets (charts, canvas) require escape hatches or raw HTML    | First-class `:::directive{attrs}` syntax + component registry                                        |
 | Wrong direction when AI mixes Arabic, Hebrew, and English in one reply| Per-block first-strong-character detection (Unicode Bidi P2)                                         |
 | Wide tables overflow the card and break layout                        | Automatic horizontal scroll for tables and long code blocks                                          |
@@ -36,10 +36,10 @@ import { StreamMarkdown } from 'stream-markdown/web'; // or 'stream-markdown/nat
 
 ```bash
 # peer deps you need for web
-npm i stream-markdown react react-dom
+npm i flowdown react react-dom
 
 # peer deps for React Native (reanimated enables card animations; optional)
-npm i stream-markdown react react-native react-native-reanimated
+npm i flowdown react react-native react-native-reanimated
 ```
 
 Supported React versions: `18.x` and `19.x`.
@@ -51,7 +51,7 @@ Supported React versions: `18.x` and `19.x`.
 ### Web
 
 ```tsx
-import { StreamMarkdown } from 'stream-markdown/web';
+import { StreamMarkdown } from 'flowdown/web';
 
 export function Message({ text }: { text: string }) {
   return (
@@ -68,7 +68,7 @@ export function Message({ text }: { text: string }) {
 ### React Native
 
 ```tsx
-import { StreamMarkdown } from 'stream-markdown/native';
+import { StreamMarkdown } from 'flowdown/native';
 
 export function Message({ text }: { text: string }) {
   return (

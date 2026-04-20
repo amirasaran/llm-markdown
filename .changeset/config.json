@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["stream-markdown-example-web", "stream-markdown-example-native"]
+  "ignore": ["flowdown-example-web", "flowdown-example-native"]
 }

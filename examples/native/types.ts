@@ -1,4 +1,4 @@
-import type { CardAnimationPreset, Direction } from 'stream-markdown/native';
+import type { CardAnimationPreset, Direction } from 'flowdown/native';
 
 export type Route = 'playground' | 'chat';
 

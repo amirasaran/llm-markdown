@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Text, View } from 'react-native';
-import { StreamMarkdown, darkTheme } from 'stream-markdown/native';
-import type { DirectiveRegistry } from 'stream-markdown/native';
+import { StreamMarkdown, darkTheme } from 'flowdown/native';
+import type { DirectiveRegistry } from 'flowdown/native';
 import { Chart } from '../directives/Chart';
 import { Callout } from '../directives/Callout';
 import type { ChatMessage, Settings } from '../types';
@@ -102,7 +102,7 @@ export function MessageBubble({
           after={
             settings.showAfter ? (
               <Text style={{ fontSize: 11, color: c.textMuted, fontStyle: 'italic' }}>
-                rendered by stream-markdown
+                rendered by flowdown
               </Text>
             ) : undefined
           }
