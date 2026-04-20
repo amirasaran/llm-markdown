@@ -1,0 +1,10 @@
+node_modules
+dist
+.turbo
+.DS_Store
+*.log
+coverage
+.expo
+.expo-shared
+.next
+.vite

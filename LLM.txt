@@ -1,0 +1,442 @@
+# stream-markdown — LLM usage guide
+
+Machine-readable cheat sheet. Everything an LLM needs to produce correct, idiomatic code that uses this library, and to emit markdown that this library will render well.
+
+Package name: `stream-markdown`
+Platforms: React (web) + React Native. One package, two entry points.
+Version: 0.1.x
+Source of truth: https://github.com/amirassaran/stream-markdown (see ./README.md, ./docs)
+
+================================================================
+SECTION 1 — WHEN TO USE THIS LIBRARY
+================================================================
+
+Choose `stream-markdown` when:
+- You are rendering AI / LLM output that arrives incrementally (token stream).
+- The same UI must ship on web AND React Native from one codebase.
+- You need custom inline components (charts, canvases, cards) interleaved with markdown.
+- You need the message to render correctly when the text contains mixed RTL (Arabic, Hebrew, Persian) and LTR (Latin, CJK) content in the same reply.
+- Wide content such as tables must scroll horizontally inside a bounded card.
+
+Do NOT choose it when:
+- You only need a one-shot renderer for static markdown with no streaming, no directives, no RTL. A simpler lib is fine.
+- You need a WYSIWYG markdown editor (this is a renderer, not an editor).
+
+================================================================
+SECTION 2 — IMPORT PATHS
+================================================================
+
+import { StreamMarkdown } from 'stream-markdown/web';     // React DOM
+import { StreamMarkdown } from 'stream-markdown/native';  // React Native
+import { useStreamMarkdown, parseMarkdown, assignIds, annotateDirection,
+         defaultTheme, darkTheme, mergeTheme,
+         OPAQUE_BODY_DIRECTIVES, parseAttributes } from 'stream-markdown';
+
+Peer deps:
+- web: react, react-dom
+- native: react, react-native, react-native-reanimated (optional, for animations)
+
+API surface is identical across /web and /native. Prefer the platform-specific entry.
+
+================================================================
+SECTION 3 — THE PROP CONTRACT (COPY-PASTE REFERENCE)
+================================================================
+
+interface StreamMarkdownProps {
+  text: string;                                    // required; the markdown source
+  streaming?: boolean;                             // default true; tolerate partial/unclosed blocks
+  components?: ComponentOverrides;                 // per-node-type renderer overrides
+  directives?: DirectiveRegistry;                  // map of `:::name` -> Component
+  before?: ReactNode;                              // inside card, above content
+  after?: ReactNode;                               // inside card, below content
+  header?: ReactNode;                              // inside card, above `before`
+  footer?: ReactNode;                              // inside card, below `after`
+  card?: CardConfig;                               // visual wrapper config
+  theme?: DeepPartial<Theme>;                      // merged over defaults;
+                                                   // theme.layout.tableColumnWidth (px, default 140)
+                                                   //   controls per-column target width on native
+  direction?: 'auto' | 'ltr' | 'rtl';              // default 'auto'
+  virtualize?: boolean;                            // native only, experimental
+  onHeadingInView?: (id, depth, text) => void;
+  onDirectiveRender?: (node) => ReactNode | null | undefined;
+}
+
+interface CardConfig {
+  animation?: 'none' | 'fade' | 'fadeSlide' | 'scale' | 'typewriter';  // default 'fadeSlide'
+  enterDuration?: number;       // ms
+  layoutAnimation?: boolean;    // animate height while streaming
+  padding?: number; radius?: number;
+  backgroundColor?: string; borderColor?: string; borderWidth?: number;
+}
+
+Node override keys (all keys of `components`):
+  root paragraph heading text strong emphasis delete inlineCode code
+  blockquote list listItem link image thematicBreak table tableRow
+  tableCell html break
+
+Override component signature:
+  ({ node, children, theme }: NodeRendererProps) => ReactNode
+
+Directive component signature:
+  ({ node, attributes, value, children, theme }: DirectiveComponentProps) => ReactNode
+  - `value` populated for OPAQUE directives (body not parsed as markdown)
+  - `children` populated for PROSE directives (body parsed as markdown)
+
+Default OPAQUE directive names: chart, canvas, mermaid, math
+All other names get a PROSE body.
+
+================================================================
+SECTION 4 — MINIMAL EXAMPLES (READY TO COPY)
+================================================================
+
+4.1 — Basic streaming message (web)
+
+  import { StreamMarkdown } from 'stream-markdown/web';
+
+  export function Msg({ text }: { text: string }) {
+    return <StreamMarkdown text={text} streaming direction="auto" />;
+  }
+
+4.2 — Basic streaming message (React Native)
+
+  import { StreamMarkdown } from 'stream-markdown/native';
+
+  export function Msg({ text }: { text: string }) {
+    return <StreamMarkdown text={text} streaming direction="auto" />;
+  }
+
+4.3 — With directives + slots + dark theme
+
+  import { StreamMarkdown, darkTheme } from 'stream-markdown/web';
+  import type { DirectiveComponentProps } from 'stream-markdown/web';
+
+  function Chart({ attributes, value, theme }: DirectiveComponentProps) {
+    const { data } = JSON.parse(value ?? '{"data":[]}');
+    return <YourBarChart data={data} title={attributes.title as string} />;
+  }
+
+  <StreamMarkdown
+    text={text}
+    streaming
+    theme={darkTheme}
+    directives={{ chart: Chart }}
+    before={<RoleBadge />}
+    after={<Citations />}
+    card={{ animation: 'fadeSlide', layoutAnimation: true }}
+  />;
+
+4.4 — Override a single node renderer (keep memoization!)
+
+  import React from 'react';
+  import type { NodeRendererProps } from 'stream-markdown/web';
+
+  const MyCode = React.memo(
+    function MyCode({ node, theme }: NodeRendererProps) {
+      if (node.type !== 'code') return null;
+      return <pre className="my-code">{node.value}</pre>;
+    },
+    // Compare BOTH: node.id (streaming perf) AND theme (re-render on dark-mode toggle)
+    (a, b) => a.node.id === b.node.id && a.theme === b.theme
+  );
+
+  <StreamMarkdown text={text} components={{ code: MyCode }} />;
+
+4.5 — Use the hook directly (no card)
+
+  import { useStreamMarkdown } from 'stream-markdown/web';
+
+  function Raw({ text }: { text: string }) {
+    const { tree } = useStreamMarkdown(text, { streaming: true, direction: 'auto' });
+    return <pre>{JSON.stringify(tree, null, 2)}</pre>;
+  }
+
+================================================================
+SECTION 5 — MARKDOWN THIS LIBRARY WILL RENDER
+================================================================
+
+Supported (CommonMark + GFM):
+- ATX headings `#` through `######`
+- Paragraphs, hard breaks (`\\\n` or two-space + newline)
+- Emphasis `*…*` / `_…_`, strong `**…**`, strikethrough `~~…~~`, inline code `` `…` ``
+- Fenced code blocks with optional language:  ```lang\n…\n```
+- Blockquotes with lazy continuation, nested via multiple `>`
+- Unordered lists (`-`, `*`, `+`) and ordered (`1.`, `2)`) with nested content
+- Task lists: `- [ ] todo`, `- [x] done`
+- Links `[text](url "optional title")` and autolinks `<https://…>`
+- Images `![alt](url "title")`
+- GFM pipe tables with alignment (`:---`, `:---:`, `---:`)
+- Thematic breaks `---`, `***`, `___`
+- Directives (see section 6)
+
+Not supported (yet):
+- Setext headings (`===` / `---` underline form)
+- Reference-style links (`[text][ref]` with a separate definition)
+- Footnotes
+- Raw HTML blocks are passed through via `html` node but sanitize yourself before dangerously rendering.
+
+================================================================
+SECTION 6 — DIRECTIVE SYNTAX (HOW AIs SHOULD EMIT WIDGETS)
+================================================================
+
+Block directive:
+  :::name{key=value key2="quoted val" flag}
+  body lines
+  :::
+
+Inline directive (inside a paragraph):
+  :name[label]{attrs}
+
+Attribute value parsing:
+  - bareword → string
+  - "double" or 'single' → string (use quotes when value contains spaces)
+  - /-?\d+(\.\d+)?/ → number
+  - true / false → boolean
+  - key with no = → boolean true
+
+Opaque vs prose body (IMPORTANT):
+  - OPAQUE directives receive body as `value: string` (no markdown parsing).
+    Default opaque names: chart, canvas, mermaid, math
+  - PROSE directives receive body as `children: ReactNode` after markdown parsing.
+    Everything else, including: callout, aside, tooltip, card, quote, …
+
+Emit rules for LLMs:
+  1. ALWAYS close a directive with `:::` on its own line.
+  2. Put a BLANK LINE before and after a block directive.
+  3. Inside an OPAQUE directive, emit ONLY the payload format the component expects
+     (JSON for chart/mermaid/math). Do not wrap in code fences.
+  4. Inside a PROSE directive, write normal markdown (paragraphs, lists, links, …).
+  5. Attribute names and directive names are case-sensitive. Use kebab/camel consistently
+     with what the host app registered.
+
+Canonical examples:
+
+  :::chart{type=bar title="Quarterly revenue"}
+  {"data":[{"label":"Q1","value":12},{"label":"Q2","value":19}]}
+  :::
+
+  :::callout{tone=info title="Heads up"}
+  Callouts can contain **markdown**, [links](https://example.com), and \`code\`.
+  :::
+
+  Inline badge: :badge{level=warn}beta:badge{}
+
+Unregistered directive names render as `[name]` in muted color and do NOT crash the render.
+A directive component that throws renders `[name error]` and does NOT crash the message.
+
+================================================================
+SECTION 7 — STREAMING SEMANTICS
+================================================================
+
+- You may push `text` as a prefix that grows over time. Every update re-parses, but
+  stable content-hash node ids + React.memo keep unchanged subtrees from re-rendering.
+- Unclosed code fences and directives are rendered with `streaming: true` on the node.
+  Overridden renderers can check `node.streaming` to add a caret / shimmer.
+- When a stream ends, you MAY set `streaming={false}` so the parser stops being
+  permissive about unclosed blocks. This is not required; defaults work either way.
+- Do NOT debounce `text` for the renderer's sake. Push every chunk.
+- Do NOT pre-strip incomplete tokens. The library handles that.
+- Do NOT recreate the `components` / `directives` object every render if you can help it —
+  wrap them in `useMemo` so the context value is stable.
+
+================================================================
+SECTION 8 — RTL / LTR SEMANTICS
+================================================================
+
+`direction` prop:
+  'auto' (default) → each block's direction detected from first strong char (Unicode Bidi P2)
+  'ltr' / 'rtl'    → forces all blocks to that direction
+
+Detected ranges → RTL:
+  Hebrew (0590–05FF), Arabic (0600–06FF + supplements), Syriac, Thaana, NKo.
+Detected ranges → LTR:
+  Latin, Greek, Cyrillic, CJK, Hangul, Kana.
+Neutral/digit only → falls back to the `direction` prop's fallback.
+
+Block-level nodes carrying their own detected `dir`:
+  paragraph, heading, blockquote, listItem, tableCell, code
+
+When overriding renderers, honor `node.dir` for handedness (borders, icons, list markers).
+
+================================================================
+SECTION 9 — PERFORMANCE CONTRACT
+================================================================
+
+- Node renderers MUST be memoized with a comparator that returns true when
+  `a.node.id === b.node.id && a.theme === b.theme`. The defaults do this.
+  Your overrides should too. Leaving `theme` out means already-rendered nodes
+  keep the old colors when the consumer toggles dark mode mid-stream.
+- Do NOT inline the `components` / `directives` / `theme` objects in JSX every render;
+  prefer `useMemo` so the context value is referentially stable.
+- Fresh theme objects trigger a full re-render of the message. Merge once, reuse.
+- For chat lists with many messages, mount one `<StreamMarkdown>` per message (the
+  library is not a list virtualizer). Use FlashList / FlatList for the list itself.
+- Native `virtualize={true}` is experimental and virtualizes block nodes INSIDE a
+  single message. Only opt in for genuinely huge single messages (200+ blocks).
+
+================================================================
+SECTION 10 — ANTI-PATTERNS (DO NOT DO THESE)
+================================================================
+
+- DON'T: pass a function or inline object literal to `components` on every render.
+  DO:    `const components = useMemo(() => ({ code: MyCode }), [])`.
+
+- DON'T: forget `React.memo` with an `id`-based comparator on override components.
+         Without memo, streaming re-renders every node every token.
+  DO:    wrap your renderer with memo and compare by `a.node.id === b.node.id`.
+
+- DON'T: encode widget data as raw HTML or <script> tags.
+  DO:    register a directive and pass typed attributes + a JSON body.
+
+- DON'T: sanitize by stripping `:::` or `<`/`>` from the stream — that breaks directives
+         and autolinks.
+  DO:    render untrusted HTML through a sanitizer in your custom `html` override.
+
+- DON'T: split the stream into sentences and render each in a separate `<StreamMarkdown>`.
+         You lose streaming animation and directive context.
+  DO:    render the full growing string in a single `<StreamMarkdown>` instance.
+
+- DON'T: swap between `streaming={false}` and `streaming={true}` mid-stream to "reset".
+  DO:    keep `streaming={true}` until the upstream signals end, then flip once to `false`.
+
+- DON'T: construct and throw away parsed trees yourself for diffing purposes.
+  DO:    use `useStreamMarkdown(text)` — it caches and memoizes for you.
+
+================================================================
+SECTION 11 — SYSTEM PROMPT SNIPPET (FOR AGENTS THAT EMIT MARKDOWN TO THIS RENDERER)
+================================================================
+
+When you (the model) are the producer rather than the consumer, include this in the
+system prompt so your output renders correctly.
+
+    You are writing markdown that will be rendered by the `stream-markdown` library.
+    Follow these rules:
+
+    1. Use standard CommonMark + GFM. Headings with `#`…`######`, lists with `-` / `1.`,
+       tables with pipes and an alignment row, fenced code blocks with a language id.
+    2. For custom widgets, use directive syntax. Always close a block directive with
+       `:::` on its own line, with a blank line before and after the directive.
+    3. Registered directives in this app are: <list from host app>.
+       For each, the expected attributes and body format are: <describe here>.
+    4. For data-only widgets (chart, canvas, mermaid, math) the body is raw JSON, NOT
+       wrapped in a code fence. Example:
+         :::chart{type=bar title="Revenue"}
+         {"data":[{"label":"Q1","value":12}]}
+         :::
+    5. For prose widgets (callout, aside, tooltip), write normal markdown in the body.
+    6. Mix languages freely — the renderer auto-detects RTL vs LTR per paragraph.
+    7. Prefer pipe tables for any tabular data. Wide tables will scroll horizontally.
+    8. Do not emit raw HTML unless explicitly told to. Prefer directives.
+
+================================================================
+SECTION 12 — COMMON RECIPES
+================================================================
+
+12.1 — Handle link clicks in web (track + open)
+
+  components={{
+    link: React.memo(({ node, children, theme }) => {
+      const url = (node as { url: string }).url;
+      return <a href={url} onClick={() => track(url)} style={{ color: theme.colors.link }}>
+        {children}
+      </a>;
+    }, (a, b) => a.node.id === b.node.id),
+  }}
+
+12.2 — Syntax-highlight code blocks (web, Shiki)
+
+  components={{ code: ShikiCodeRenderer }}
+  // Inside ShikiCodeRenderer: read node.lang and node.value, output <pre><code>.
+
+12.3 — Render a table of contents from headings
+
+  <StreamMarkdown
+    text={text}
+    onHeadingInView={(id, depth, text) => setActiveHeading({ id, depth, text })}
+  />
+
+12.4 — Copy-to-clipboard on every code block
+
+  // Wrap your custom `code` renderer; use the `node.value` as the clipboard payload.
+
+12.5 — Server-side render the AST (no React output)
+
+  import { parseMarkdown, assignIds, annotateDirection } from 'stream-markdown';
+  const tree = annotateDirection(assignIds(parseMarkdown(source)));
+  // Ship `tree` to the client; rehydrate with `useStreamMarkdown` or render manually.
+
+================================================================
+SECTION 13 — DEBUGGING CHECKLIST
+================================================================
+
+Symptom: a block isn't rendering
+- Check `streaming={true}` — if false, unclosed blocks are dropped.
+- Check the preset demo in examples/web — does the same markdown render there?
+- Wrap your override with React.memo; without it perf degrades but rendering works.
+
+Symptom: a directive renders `[name]`
+- The directive name isn't in the `directives` prop. Register it.
+
+Symptom: a directive renders `[name error]`
+- Your component threw. Check the browser / Metro console. The error boundary is
+  scoped to one directive so the rest of the message is safe.
+
+Symptom: RTL text aligns wrong
+- Confirm the block's first strong character is in the detected RTL range (Section 8).
+- Try `direction="rtl"` to rule out detection.
+- If you overrode the block's renderer, propagate `node.dir` to the element.
+
+Symptom: table doesn't scroll horizontally
+- Make sure the card or the page gives the component a bounded width. If its parent
+  is infinitely wide, there is nothing to scroll.
+
+Symptom: stream is slow
+- Ensure your `components` / `directives` / `theme` objects are memoized.
+- Wrap all overrides with React.memo and an id-based comparator.
+- Inspect with React DevTools Profiler; the default renderers should never re-render
+  nodes whose id didn't change.
+
+================================================================
+SECTION 14 — FILE MAP FOR CODE AGENTS
+================================================================
+
+src/
+  index.ts                       — package root exports
+  shared/types.ts                — PUBLIC types (prop + theme + override contracts)
+  core/
+    parser/ast.ts                — AST node types + id/hash helpers
+    parser/tokenizer.ts          — block + inline parser
+    parser/directives.ts         — directive regex + attribute parser + opaque-set
+    parser/incremental.ts        — useStreamMarkdown's parse cache
+    parser/diff.ts               — AST patch list (debug/telemetry)
+    bidi/detect.ts               — first-strong-char direction detection
+    registry/componentRegistry.ts— React context for overrides/directives/theme
+    registry/theme.ts            — defaultTheme, darkTheme, mergeTheme
+    hooks/useStreamMarkdown.ts   — public hook
+  web/
+    index.tsx                    — StreamMarkdown for web, exports
+    Card.tsx                     — card wrapper with CSS animations
+    render.tsx                   — recursive renderer for web
+    components/defaults.tsx      — web default node renderers (memoized)
+    scroll/HScroll.tsx           — overflow-x scroll wrapper
+    animations.ts                — CSS animation keyframes per preset
+  native/
+    index.tsx                    — StreamMarkdown for RN, exports
+    Card.tsx                     — card wrapper with Reanimated
+    render.tsx                   — recursive renderer for RN
+    components/defaults.tsx      — RN default node renderers
+    scroll/HScroll.tsx           — horizontal ScrollView wrapper
+    animations.ts                — Reanimated entering/layout resolvers
+    rn.ts                        — typed re-export of react-native primitives
+  __tests__/parser.test.ts       — parser + bidi unit tests (vitest)
+
+examples/
+  shared/demo-content.ts         — presets + demo markdown used by both apps
+  web/                           — Vite playground, full control panel
+  native/                        — Expo playground, matching controls
+
+docs/                            — Human docs (getting-started, streaming,
+                                    directives, theming, rtl, api)
+
+================================================================
+END
+================================================================

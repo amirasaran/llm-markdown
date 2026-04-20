@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "stream-markdown-example-native",
+    "slug": "stream-markdown-example-native",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "scheme": "streammarkdown",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": true, "bundleIdentifier": "dev.streammarkdown.example" },
+    "android": { "package": "dev.streammarkdown.example" },
+    "web": { "bundler": "metro" }
+  }
+}

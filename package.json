@@ -1,0 +1,97 @@
+{
+  "name": "stream-markdown",
+  "version": "0.1.0",
+  "description": "Universal streaming markdown renderer for React and React Native, built for AI output.",
+  "license": "MIT",
+  "author": "Amir Asaran",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amirassaran/stream-markdown.git"
+  },
+  "homepage": "https://github.com/amirassaran/stream-markdown#readme",
+  "bugs": {
+    "url": "https://github.com/amirassaran/stream-markdown/issues"
+  },
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "react-native": "./dist/native.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "import": "./dist/web.js",
+      "require": "./dist/web.cjs"
+    },
+    "./native": {
+      "types": "./dist/native.d.ts",
+      "react-native": "./dist/native.js",
+      "import": "./dist/native.js",
+      "require": "./dist/native.cjs"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish",
+    "example:web": "pnpm --filter stream-markdown-example-web dev",
+    "example:native": "pnpm --filter stream-markdown-example-native start"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "react-native": ">=0.72.0",
+    "react-native-reanimated": ">=3.0.0",
+    "framer-motion": ">=11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react-dom": { "optional": true },
+    "react-native": { "optional": true },
+    "react-native-reanimated": { "optional": true },
+    "framer-motion": { "optional": true }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": [
+    "markdown",
+    "react",
+    "react-native",
+    "streaming",
+    "ai",
+    "renderer",
+    "rtl"
+  ]
+}
