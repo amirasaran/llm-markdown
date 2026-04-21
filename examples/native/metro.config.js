@@ -23,11 +23,21 @@ config.resolver.nodeModulesPaths = [
 config.resolver.disableHierarchicalLookup = true;
 
 // Honor the `exports` field in package.json — needed for `llm-markdown/native`
-// to resolve to `dist/native.js`. Metro >= 0.80.
+// to resolve to `dist/native.js`. Both naming forms set for compatibility
+// across Metro 0.80 (Expo 51) and Metro 0.82+ (Expo 54).
 config.resolver.unstable_enablePackageExports = true;
+config.resolver.enablePackageExports = true;
 
 // Let Metro follow the symlink that pnpm creates at
 // examples/native/node_modules/llm-markdown -> workspace root.
 config.resolver.unstable_enableSymlinks = true;
+config.resolver.enableSymlinks = true;
+
+// Belt-and-braces: if the symlink resolution fails (it has on Expo 54 pnpm
+// setups), fall back to resolving `llm-markdown` directly at the workspace
+// root. The package exports field still drives subpath resolution.
+config.resolver.extraNodeModules = {
+  'llm-markdown': workspaceRoot,
+};
 
 module.exports = config;

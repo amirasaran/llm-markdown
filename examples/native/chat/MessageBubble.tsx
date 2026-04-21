@@ -4,10 +4,11 @@ import { LLMMarkdown, darkTheme } from 'llm-markdown/native';
 import type { DirectiveRegistry } from 'llm-markdown/native';
 import { Chart } from '../directives/Chart';
 import { Callout } from '../directives/Callout';
+import { Email } from '../directives/Email';
 import type { ChatMessage, Settings } from '../types';
 import { pick } from '../theme';
 
-const directives: DirectiveRegistry = { chart: Chart, callout: Callout };
+const directives: DirectiveRegistry = { chart: Chart, callout: Callout, email: Email };
 
 export function MessageBubble({
   message,

@@ -25,6 +25,7 @@ export function LLMMarkdown(props: LLMMarkdownProps) {
     direction = 'auto',
     textSelection,
     blockSlots,
+    blockStyles,
   } = props;
 
   const mergedTheme = useMemo(() => mergeTheme(defaultTheme, theme), [theme]);
@@ -42,10 +43,11 @@ export function LLMMarkdown(props: LLMMarkdownProps) {
       direction,
       textSelection: normalizedSelection,
       blockSlots: blockSlots ?? {},
+      blockStyles: blockStyles ?? {},
     };
     if (props.onHeadingInView) base.onHeadingInView = props.onHeadingInView;
     return base;
-  }, [components, directives, mergedTheme, direction, normalizedSelection, blockSlots, props.onHeadingInView]);
+  }, [components, directives, mergedTheme, direction, normalizedSelection, blockSlots, blockStyles, props.onHeadingInView]);
 
   return (
     <RendererContext.Provider value={ctxValue}>
@@ -80,6 +82,8 @@ export type {
   BlockSlots,
   BlockSlot,
   BlockAction,
+  BlockStyles,
+  BlockStyleConfig,
   Theme,
   Direction,
   BlockNode,

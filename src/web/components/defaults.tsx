@@ -15,8 +15,10 @@ import type {
   TableRowNode,
   TableCellNode,
   BaseNode,
+  AnyNode,
 } from '../../core/parser/ast';
 import { HScroll } from '../scroll/HScroll';
+import { useBlockStyle } from '../../core/blockStyle';
 
 const memoEqual = (
   a: { node: BaseNode; theme: Theme },
@@ -45,14 +47,17 @@ export const HeadingR = memo(function HeadingR({
     6: theme.typography.sizeBase,
   };
   const Tag = (`h${node.depth}` as unknown) as 'h1';
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <Tag
       dir={node.dir}
+      className={className}
       style={{
         fontSize: sizeMap[node.depth],
         fontWeight: 700,
         margin: `${theme.spacing.lg}px 0 ${theme.spacing.sm}px`,
         color: theme.colors.text,
+        ...(userStyle as CSSProperties | undefined),
       }}
     >
       {children}
@@ -69,10 +74,16 @@ export const ParagraphR = memo(function ParagraphR({
   children?: ReactNode;
   theme: Theme;
 }) {
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <p
       dir={node.dir}
-      style={{ margin: `${theme.spacing.sm}px 0`, color: theme.colors.text }}
+      className={className}
+      style={{
+        margin: `${theme.spacing.sm}px 0`,
+        color: theme.colors.text,
+        ...(userStyle as CSSProperties | undefined),
+      }}
     >
       {children}
     </p>
@@ -119,9 +130,11 @@ export const InlineCodeR = memo(function InlineCodeR({
 }, memoEqual);
 
 export const CodeR = memo(function CodeR({ node, theme }: { node: CodeNode; theme: Theme }) {
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <HScroll style={{ margin: `${theme.spacing.sm}px 0` }}>
       <pre
+        className={className}
         style={{
           margin: 0,
           padding: theme.spacing.md,
@@ -131,6 +144,7 @@ export const CodeR = memo(function CodeR({ node, theme }: { node: CodeNode; them
           fontFamily: theme.typography.monoFamily,
           fontSize: theme.typography.sizeSmall,
           minWidth: 'fit-content',
+          ...(userStyle as CSSProperties | undefined),
         }}
       >
         <code>{node.value}</code>
@@ -152,13 +166,16 @@ export const BlockquoteR = memo(function BlockquoteR({
   const borderStyle: CSSProperties = rtl
     ? { borderRight: `4px solid ${theme.colors.blockquoteBar}`, paddingRight: theme.spacing.md }
     : { borderLeft: `4px solid ${theme.colors.blockquoteBar}`, paddingLeft: theme.spacing.md };
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <blockquote
       dir={node.dir}
+      className={className}
       style={{
         margin: `${theme.spacing.sm}px 0`,
         color: theme.colors.textMuted,
         ...borderStyle,
+        ...(userStyle as CSSProperties | undefined),
       }}
     >
       {children}
@@ -176,13 +193,16 @@ export const ListR = memo(function ListR({
   theme: Theme;
 }) {
   const Tag = node.ordered ? 'ol' : 'ul';
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <Tag
       start={node.start}
+      className={className}
       style={{
         margin: `${theme.spacing.sm}px 0`,
         paddingInlineStart: theme.spacing.xl,
         color: theme.colors.text,
+        ...(userStyle as CSSProperties | undefined),
       }}
     >
       {children}
@@ -199,16 +219,19 @@ export const ListItemR = memo(function ListItemR({
   children?: ReactNode;
   theme: Theme;
 }) {
+  const { style: userStyle, className } = useBlockStyle(node);
   if (node.checked !== undefined && node.checked !== null) {
     return (
       <li
         dir={node.dir}
+        className={className}
         style={{
           listStyle: 'none',
           marginInlineStart: -theme.spacing.lg,
           display: 'flex',
           alignItems: 'flex-start',
           gap: 8,
+          ...(userStyle as CSSProperties | undefined),
         }}
       >
         <input
@@ -221,7 +244,11 @@ export const ListItemR = memo(function ListItemR({
       </li>
     );
   }
-  return <li dir={node.dir}>{children}</li>;
+  return (
+    <li dir={node.dir} className={className} style={userStyle as CSSProperties | undefined}>
+      {children}
+    </li>
+  );
 }, memoEqual);
 
 export const LinkR = memo(function LinkR({
@@ -233,11 +260,17 @@ export const LinkR = memo(function LinkR({
   children?: ReactNode;
   theme: Theme;
 }) {
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <a
       href={node.url}
       title={node.title}
-      style={{ color: theme.colors.link, textDecoration: 'underline' }}
+      className={className}
+      style={{
+        color: theme.colors.link,
+        textDecoration: 'underline',
+        ...(userStyle as CSSProperties | undefined),
+      }}
       target="_blank"
       rel="noopener noreferrer"
     >
@@ -247,25 +280,38 @@ export const LinkR = memo(function LinkR({
 }, memoEqual);
 
 export const ImageR = memo(function ImageR({ node }: { node: ImageNode; theme: Theme }) {
-  return <img src={node.url} alt={node.alt} title={node.title} style={{ maxWidth: '100%' }} />;
+  const { style: userStyle, className } = useBlockStyle(node);
+  return (
+    <img
+      src={node.url}
+      alt={node.alt}
+      title={node.title}
+      className={className}
+      style={{ maxWidth: '100%', ...(userStyle as CSSProperties | undefined) }}
+    />
+  );
 }, memoEqual);
 
 export const ThematicBreakR = memo(
-  function ThematicBreakR({ theme }: { theme: Theme }) {
+  function ThematicBreakR({ node, theme }: { node: BaseNode; theme: Theme }) {
+    const { style: userStyle, className } = useBlockStyle(node as unknown as AnyNode);
     return (
       <hr
+        className={className}
         style={{
           border: 0,
           borderTop: `1px solid ${theme.colors.border}`,
           margin: `${theme.spacing.lg}px 0`,
+          ...(userStyle as CSSProperties | undefined),
         }}
       />
     );
   },
-  (a, b) => a.theme === b.theme
+  (a, b) => a.node.id === b.node.id && a.theme === b.theme
 );
 
 export const TableR = memo(function TableR({
+  node,
   children,
   theme,
 }: {
@@ -273,14 +319,17 @@ export const TableR = memo(function TableR({
   children?: ReactNode;
   theme: Theme;
 }) {
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <HScroll style={{ margin: `${theme.spacing.sm}px 0` }}>
       <table
+        className={className}
         style={{
           borderCollapse: 'collapse',
           minWidth: '100%',
           color: theme.colors.text,
           fontSize: theme.typography.sizeBase,
+          ...(userStyle as CSSProperties | undefined),
         }}
       >
         <tbody>{children}</tbody>
@@ -309,14 +358,17 @@ export const TableCellR = memo(function TableCellR({
   theme: Theme;
 }) {
   const Tag = node.header ? 'th' : 'td';
+  const { style: userStyle, className } = useBlockStyle(node);
   return (
     <Tag
+      className={className}
       style={{
         border: `1px solid ${theme.colors.border}`,
         padding: `${theme.spacing.xs}px ${theme.spacing.sm}px`,
         textAlign: 'start',
         fontWeight: node.header ? 600 : 400,
         whiteSpace: 'nowrap',
+        ...(userStyle as CSSProperties | undefined),
       }}
     >
       {children}

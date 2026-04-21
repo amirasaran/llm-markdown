@@ -71,6 +71,7 @@ interface LLMMarkdownProps {
   virtualize?: boolean;                      // native only, experimental
   textSelection?: boolean | TextSelectionConfig;
   blockSlots?: BlockSlots;
+  blockStyles?: BlockStyles;
   onHeadingInView?: (id, depth, text) => void;
   onDirectiveRender?: (node) => ReactNode | null | undefined;
 }
@@ -135,6 +136,38 @@ The \`onPress\` callback receives the **full AST node** — you have access to e
 - \`image\` → \`{ url, alt, title }\`
 
 \`actions\` is a shortcut that renders a themed pill toolbar below the block. For full UI control, use \`before\` / \`after\` — each returns arbitrary \`ReactNode\`s rendered above / below the block. First cut supports \`code\`, \`table\`, and \`image\`; other block types are customizable via the \`components\` override map instead.
+
+---
+
+## Block styles (cosmetic tweaks without replacing renderers)
+
+When you want to tweak the visual of a block type — change a background, add a border, apply a Tailwind class — but not rewrite the renderer, use \`blockStyles\`. Each entry is merged **over** the default renderer's computed style.
+
+\`\`\`tsx
+<LLMMarkdown
+  text={text}
+  blockStyles={{
+    heading: {
+      style: (node) => ({
+        borderLeft: node.depth === 1 ? '4px solid #6366F1' : undefined,
+        paddingLeft: node.depth === 1 ? 12 : 0,
+      }),
+    },
+    code: {
+      style: { backgroundColor: '#0B1020' },
+      className: 'font-mono shadow-lg',  // web only
+    },
+    blockquote: {
+      style: { fontStyle: 'italic' },
+    },
+  }}
+/>
+\`\`\`
+
+- \`style\` takes a plain object or a function \`(node) => style\` so you can style dynamically based on \`node.dir\`, \`node.lang\`, \`node.depth\`, etc.
+- \`className\` is **web only** and silently ignored on native. Perfect for Tailwind / CSS Modules / utility frameworks.
+- Applied to block renderers in v1 (heading, paragraph, code, blockquote, list, listItem, link, image, thematicBreak, table, tableRow, tableCell). Inline types use \`components\` for now.
+- Use \`blockStyles\` for cosmetic changes; use \`components\` when you need a full replacement.
 
 ---
 

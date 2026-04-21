@@ -109,6 +109,7 @@ The API surface is identical across platforms.
 - ✅ **Slots** — `header`, `before`, `after`, `footer` around the content
 - ✅ **Text selection** — system menu + optional custom actions ("Copy", "Ask AI"), continuous selection across text blocks on native (ChatGPT-style)
 - ✅ **Per-block toolbars** — `blockSlots` with Copy / Run / Export for code, tables, images
+- ✅ **Per-block style tweaks** — `blockStyles` accepts `{ style, className }` (or functions of the node) merged over default renderers; no component override needed
 - ✅ **Theme tokens** — colors, spacing, radii, typography, motion
 - ✅ **Error-bounded directives** — one broken chart does not blank the message
 - ✅ **Zero runtime deps** (core); React Native animations use the peer `react-native-reanimated` if present

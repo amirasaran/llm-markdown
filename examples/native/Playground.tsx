@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LLMMarkdown, darkTheme } from 'llm-markdown/native';
-import type { BlockSlots, DirectiveRegistry } from 'llm-markdown/native';
+import type { BlockSlots, BlockStyles, DirectiveRegistry } from 'llm-markdown/native';
 import { presets } from '../shared/demo-content';
 import { Chart } from './directives/Chart';
 import { Callout } from './directives/Callout';
+import { Email } from './directives/Email';
 import { DEFAULT_SETTINGS, type Settings } from './types';
 import { pick } from './theme';
 import { Drawer } from './Drawer';
@@ -57,7 +58,7 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
   }, [source, streaming, settings.charsPerTick, settings.tickMs, restartToken]);
 
   const directives: DirectiveRegistry = useMemo(
-    () => ({ chart: Chart, callout: Callout }),
+    () => ({ chart: Chart, callout: Callout, email: Email }),
     []
   );
 
@@ -100,6 +101,85 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
     }),
     []
   );
+
+  // Editable block-style state. Rendered as a sidebar panel; toggle per
+  // block, edit fields live.
+  const [bsHeading, setBsHeading] = useState({
+    enabled: true,
+    color: '#6366F1',
+    fontSize: 32,
+  });
+  const [bsParagraph, setBsParagraph] = useState({
+    enabled: false,
+    color: '#111827',
+    fontSize: 16,
+  });
+  const [bsCode, setBsCode] = useState({
+    enabled: true,
+    background: '#4B5563',
+    padding: 14,
+    borderRadius: 10,
+  });
+  const [bsBlockquote, setBsBlockquote] = useState({
+    enabled: true,
+    color: '#6B7280',
+    fontStyle: 'italic' as 'normal' | 'italic',
+  });
+  const [bsTable, setBsTable] = useState({
+    enabled: false,
+    borderColor: '#E5E7EB',
+    borderRadius: 6,
+  });
+  const [bsTableCell, setBsTableCell] = useState({
+    enabled: false,
+    padding: 10,
+  });
+  const [bsList, setBsList] = useState({
+    enabled: false,
+    paddingLeft: 12,
+  });
+
+  const blockStylesDemo: BlockStyles = useMemo(() => {
+    const out: BlockStyles = {};
+    if (bsHeading.enabled) {
+      out.heading = { style: { color: safeColor(bsHeading.color), fontSize: bsHeading.fontSize } };
+    }
+    if (bsParagraph.enabled) {
+      out.paragraph = {
+        style: { color: safeColor(bsParagraph.color), fontSize: bsParagraph.fontSize },
+      };
+    }
+    if (bsCode.enabled) {
+      out.code = {
+        style: {
+          backgroundColor: safeColor(bsCode.background),
+          padding: bsCode.padding,
+          borderRadius: bsCode.borderRadius,
+        },
+      };
+    }
+    if (bsBlockquote.enabled) {
+      out.blockquote = {
+        style: { color: safeColor(bsBlockquote.color), fontStyle: bsBlockquote.fontStyle },
+      };
+    }
+    if (bsTable.enabled) {
+      out.table = {
+        style: { borderColor: safeColor(bsTable.borderColor), borderRadius: bsTable.borderRadius },
+      };
+    }
+    if (bsTableCell.enabled) {
+      out.tableCell = {
+        style: { padding: bsTableCell.padding },
+      };
+    }
+    if (bsList.enabled) {
+      out.list = {
+        style: { paddingLeft: bsList.paddingLeft },
+      };
+    }
+    return out;
+  }, [bsHeading, bsParagraph, bsCode, bsBlockquote, bsTable, bsTableCell, bsList]);
 
   const progressPct =
     source.length === 0 ? 100 : Math.min(100, (text.length / source.length) * 100);
@@ -187,6 +267,162 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
           </View>
         </View>
 
+        <View style={panelStyle(settings.dark)}>
+          <SectionTitle dark={settings.dark}>Block styles</SectionTitle>
+          <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 4 }}>
+            Merged over default renderers. Toggle + tweak live.
+          </Text>
+          <BlockStyleRow
+            label="heading"
+            enabled={bsHeading.enabled}
+            onToggle={(v) => setBsHeading((s) => ({ ...s, enabled: v }))}
+            dark={settings.dark}
+            fields={[
+              {
+                key: 'color',
+                label: 'color',
+                kind: 'color',
+                value: bsHeading.color,
+                onChange: (v) => setBsHeading((s) => ({ ...s, color: v })),
+              },
+              {
+                key: 'fontSize',
+                label: 'font-size',
+                kind: 'number',
+                value: bsHeading.fontSize,
+                onChange: (v) => setBsHeading((s) => ({ ...s, fontSize: v })),
+              },
+            ]}
+          />
+          <BlockStyleRow
+            label="paragraph"
+            enabled={bsParagraph.enabled}
+            onToggle={(v) => setBsParagraph((s) => ({ ...s, enabled: v }))}
+            dark={settings.dark}
+            fields={[
+              {
+                key: 'color',
+                label: 'color',
+                kind: 'color',
+                value: bsParagraph.color,
+                onChange: (v) => setBsParagraph((s) => ({ ...s, color: v })),
+              },
+              {
+                key: 'fontSize',
+                label: 'font-size',
+                kind: 'number',
+                value: bsParagraph.fontSize,
+                onChange: (v) => setBsParagraph((s) => ({ ...s, fontSize: v })),
+              },
+            ]}
+          />
+          <BlockStyleRow
+            label="code"
+            enabled={bsCode.enabled}
+            onToggle={(v) => setBsCode((s) => ({ ...s, enabled: v }))}
+            dark={settings.dark}
+            fields={[
+              {
+                key: 'background',
+                label: 'background',
+                kind: 'color',
+                value: bsCode.background,
+                onChange: (v) => setBsCode((s) => ({ ...s, background: v })),
+              },
+              {
+                key: 'padding',
+                label: 'padding',
+                kind: 'number',
+                value: bsCode.padding,
+                onChange: (v) => setBsCode((s) => ({ ...s, padding: v })),
+              },
+              {
+                key: 'borderRadius',
+                label: 'radius',
+                kind: 'number',
+                value: bsCode.borderRadius,
+                onChange: (v) => setBsCode((s) => ({ ...s, borderRadius: v })),
+              },
+            ]}
+          />
+          <BlockStyleRow
+            label="blockquote"
+            enabled={bsBlockquote.enabled}
+            onToggle={(v) => setBsBlockquote((s) => ({ ...s, enabled: v }))}
+            dark={settings.dark}
+            fields={[
+              {
+                key: 'color',
+                label: 'color',
+                kind: 'color',
+                value: bsBlockquote.color,
+                onChange: (v) => setBsBlockquote((s) => ({ ...s, color: v })),
+              },
+              {
+                key: 'fontStyle',
+                label: 'font-style',
+                kind: 'select',
+                value: bsBlockquote.fontStyle,
+                options: ['normal', 'italic'],
+                onChange: (v) =>
+                  setBsBlockquote((s) => ({ ...s, fontStyle: v as 'normal' | 'italic' })),
+              },
+            ]}
+          />
+          <BlockStyleRow
+            label="table"
+            enabled={bsTable.enabled}
+            onToggle={(v) => setBsTable((s) => ({ ...s, enabled: v }))}
+            dark={settings.dark}
+            fields={[
+              {
+                key: 'borderColor',
+                label: 'border color',
+                kind: 'color',
+                value: bsTable.borderColor,
+                onChange: (v) => setBsTable((s) => ({ ...s, borderColor: v })),
+              },
+              {
+                key: 'borderRadius',
+                label: 'radius',
+                kind: 'number',
+                value: bsTable.borderRadius,
+                onChange: (v) => setBsTable((s) => ({ ...s, borderRadius: v })),
+              },
+            ]}
+          />
+          <BlockStyleRow
+            label="tableCell"
+            enabled={bsTableCell.enabled}
+            onToggle={(v) => setBsTableCell((s) => ({ ...s, enabled: v }))}
+            dark={settings.dark}
+            fields={[
+              {
+                key: 'padding',
+                label: 'padding',
+                kind: 'number',
+                value: bsTableCell.padding,
+                onChange: (v) => setBsTableCell((s) => ({ ...s, padding: v })),
+              },
+            ]}
+          />
+          <BlockStyleRow
+            label="list"
+            enabled={bsList.enabled}
+            onToggle={(v) => setBsList((s) => ({ ...s, enabled: v }))}
+            dark={settings.dark}
+            fields={[
+              {
+                key: 'paddingLeft',
+                label: 'indent (px)',
+                kind: 'number',
+                value: bsList.paddingLeft,
+                onChange: (v) => setBsList((s) => ({ ...s, paddingLeft: v })),
+              },
+            ]}
+          />
+        </View>
+
         <LLMMarkdown
           text={text}
           streaming={streaming}
@@ -195,6 +431,7 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
           direction={settings.direction}
           textSelection
           blockSlots={blockSlots}
+          blockStyles={blockStylesDemo}
           card={{ animation: settings.animation, layoutAnimation: settings.layoutAnimation }}
           header={
             settings.showHeader ? (
@@ -314,6 +551,23 @@ function Header({
         </Text>
         <Text style={{ color: c.text, fontSize: 16, fontWeight: '700' }}>llm-markdown</Text>
       </View>
+      <Pressable
+        onPress={() => Linking.openURL('https://github.com/amirasaran/llm-markdown')}
+        accessibilityLabel="View llm-markdown on GitHub"
+        style={({ pressed }) => ({
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: c.headerBorder,
+          backgroundColor: dark ? '#1F1F27' : '#ffffff',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.7 : 1,
+        })}
+      >
+        <Text style={{ color: c.text, fontSize: 16, fontWeight: '700' }}>★</Text>
+      </Pressable>
       <Pressable
         onPress={onOpenChat}
         accessibilityLabel="Open chat demo"
@@ -455,5 +709,157 @@ function Chips<T extends string>({
         })}
       </View>
     </ScrollView>
+  );
+}
+
+const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+const RGB_COLOR_RE = /^rgba?\(/i;
+function safeColor(v: string): string | undefined {
+  if (!v) return undefined;
+  if (HEX_COLOR_RE.test(v)) return v;
+  if (RGB_COLOR_RE.test(v)) return v;
+  return undefined;
+}
+
+type NativeBsField =
+  | { key: string; label: string; kind: 'color'; value: string; onChange: (v: string) => void }
+  | {
+      key: string;
+      label: string;
+      kind: 'number';
+      value: number;
+      onChange: (v: number) => void;
+    }
+  | {
+      key: string;
+      label: string;
+      kind: 'select';
+      value: string;
+      options: string[];
+      onChange: (v: string) => void;
+    };
+
+function BlockStyleRow({
+  label,
+  enabled,
+  onToggle,
+  dark,
+  fields,
+}: {
+  label: string;
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+  dark: boolean;
+  fields: NativeBsField[];
+}) {
+  const c = pick(dark);
+  return (
+    <View
+      style={{
+        padding: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: c.sidebarBorder,
+        backgroundColor: dark ? '#14141A' : '#FAFAFA',
+        gap: 8,
+      }}
+    >
+      <ToggleRow label={label} value={enabled} onChange={onToggle} dark={dark} />
+      {enabled ? (
+        <View style={{ gap: 6 }}>
+          {fields.map((f) => (
+            <View
+              key={f.key}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <Text style={{ width: 90, color: c.textMuted, fontSize: 12 }}>{f.label}</Text>
+              {f.kind === 'color' ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      borderWidth: 1,
+                      borderColor: c.sidebarBorder,
+                      backgroundColor: safeColor(f.value),
+                    }}
+                  />
+                  <TextInput
+                    value={f.value}
+                    onChangeText={f.onChange}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={{
+                      flex: 1,
+                      paddingHorizontal: 8,
+                      paddingVertical: 6,
+                      borderWidth: 1,
+                      borderColor: c.sidebarBorder,
+                      borderRadius: 6,
+                      color: c.text,
+                      fontSize: 12,
+                      fontFamily: 'Menlo',
+                    }}
+                  />
+                </View>
+              ) : f.kind === 'number' ? (
+                <TextInput
+                  value={String(f.value)}
+                  onChangeText={(t) => {
+                    const n = Number(t);
+                    if (!isNaN(n)) f.onChange(n);
+                  }}
+                  keyboardType="numeric"
+                  style={{
+                    flex: 1,
+                    paddingHorizontal: 8,
+                    paddingVertical: 6,
+                    borderWidth: 1,
+                    borderColor: c.sidebarBorder,
+                    borderRadius: 6,
+                    color: c.text,
+                    fontSize: 12,
+                  }}
+                />
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 6, flex: 1, flexWrap: 'wrap' }}>
+                  {f.options.map((opt) => {
+                    const active = f.value === opt;
+                    return (
+                      <Pressable
+                        key={opt}
+                        onPress={() => f.onChange(opt)}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: active ? c.accent : c.sidebarBorder,
+                          backgroundColor: active ? c.accent : 'transparent',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: active ? '#ffffff' : c.text,
+                            fontSize: 11,
+                          }}
+                        >
+                          {opt}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }

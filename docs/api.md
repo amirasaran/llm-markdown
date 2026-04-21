@@ -118,6 +118,63 @@ Example:
 
 For block types not yet in `BlockSlots` (paragraph, heading, blockquote, list, etc.), use the `components` override map instead.
 
+### `blockStyles`
+
+Per-node-type style + className overrides, merged **over** the default renderer's computed style. Lighter than `components` — no component reimplementation, just tweaks to the visual.
+
+```ts
+interface BlockStyles {
+  heading?:        BlockStyleConfig;
+  paragraph?:      BlockStyleConfig;
+  code?:           BlockStyleConfig;
+  blockquote?:     BlockStyleConfig;
+  list?:           BlockStyleConfig;
+  listItem?:       BlockStyleConfig;
+  link?:           BlockStyleConfig;
+  image?:          BlockStyleConfig;
+  thematicBreak?:  BlockStyleConfig;
+  table?:          BlockStyleConfig;
+  tableRow?:       BlockStyleConfig;
+  tableCell?:      BlockStyleConfig;
+  // ...inline types (text, strong, emphasis, delete, inlineCode) are accepted
+  // at the type level but are not yet applied in v1. Use `components` for those.
+}
+
+interface BlockStyleConfig {
+  style?: CSSProperties | ((node: AnyNode) => CSSProperties | undefined);
+  className?: string | ((node: AnyNode) => string | undefined);  // web only
+}
+```
+
+- `style` — merged on top of the default style object. Static object or function form.
+- `className` — **web only**, silently ignored on native. Handy for Tailwind, CSS Modules, or utility CSS.
+- The function form receives the typed AST node, so you can style based on `node.dir`, `node.lang`, `node.depth`, etc.
+
+Example:
+
+```tsx
+<LLMMarkdown
+  text={text}
+  blockStyles={{
+    heading: {
+      style: (node) => ({
+        borderLeft: node.depth === 1 ? `4px solid ${accent}` : undefined,
+        paddingLeft: node.depth === 1 ? 12 : 0,
+      }),
+    },
+    code: {
+      style: { backgroundColor: '#0B1020' },
+      className: 'font-mono shadow-lg',  // web only
+    },
+    blockquote: {
+      style: { fontStyle: 'italic', borderLeftWidth: 2 },
+    },
+  }}
+/>
+```
+
+When you need full layout control, use `components` to replace the renderer entirely; when you only need cosmetic tweaks, use `blockStyles`.
+
 ### `CardConfig`
 
 ```ts

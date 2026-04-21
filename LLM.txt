@@ -61,7 +61,29 @@ interface LLMMarkdownProps {
   onDirectiveRender?: (node) => ReactNode | null | undefined;
   textSelection?: boolean | TextSelectionConfig;   // see below
   blockSlots?: BlockSlots;                         // see below
+  blockStyles?: BlockStyles;                       // per-node-type style + className overrides
 }
+
+interface BlockStyles {
+  // One entry per renderer type; each accepts:
+  //   { style?: CSSProperties | ((node) => CSSProperties);
+  //     className?: string | ((node) => string) }   // className: web only
+  heading?, paragraph?, code?, blockquote?, list?, listItem?, link?,
+  image?, thematicBreak?, table?, tableRow?, tableCell?, text?, strong?,
+  emphasis?, delete?, inlineCode?, html?, break?, root?
+}
+
+// blockStyles notes:
+// - Merges OVER the default renderer's computed style — you don't have to
+//   re-specify the defaults. Set only what you want to change.
+// - className is web only, silently ignored on native. Use it for Tailwind,
+//   CSS Modules, or utility CSS.
+// - Function form receives the AST node for dynamic styling, e.g.
+//   `{ style: (n) => ({ direction: n.dir === 'rtl' ? 'rtl' : 'ltr' }) }`.
+// - In v1, styling is applied on block-level renderers. Inline types (text,
+//   strong, emphasis, delete, inlineCode, break) no-op for now — use the
+//   `components` override map for those.
+// - Much lighter than `components`: no component reimplementation needed.
 
 interface BlockSlots {
   code?:  { before?, after?, actions?: BlockAction<CodeNode>[] };

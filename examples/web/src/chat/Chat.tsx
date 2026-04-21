@@ -5,6 +5,7 @@ import { resolveResponse } from './commands';
 import type { ChatMessage, ChatSettings } from './types';
 import { pick } from './theme';
 import { AppNav } from '../components/AppNav';
+import { GitHubLink } from '../components/GitHubLink';
 
 let messageCounter = 0;
 const nextId = () => `m${Date.now().toString(36)}-${(++messageCounter).toString(36)}`;
@@ -206,7 +207,10 @@ function ChatHeader({
         </span>
       </div>
       {onNavigate ? (
-        <AppNav current="/chat" onNavigate={onNavigate} dark={dark} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AppNav current="/chat" onNavigate={onNavigate} dark={dark} />
+          <GitHubLink dark={dark} />
+        </div>
       ) : onBack ? (
         <button
           onClick={onBack}

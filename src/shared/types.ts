@@ -132,6 +132,44 @@ export interface BlockSlots {
   image?: BlockSlot<ImageNode>;
 }
 
+/** Per-block style + className overrides merged over the default renderer's
+ *  computed style. Use this when you want to tweak visuals without replacing
+ *  the whole renderer via `components`. On native only `style` applies —
+ *  `className` is silently ignored. Function form receives the typed AST
+ *  node for dynamic styling (e.g. conditional on `node.dir`, `node.lang`,
+ *  `node.depth`). */
+export interface BlockStyleConfig<N = AnyNode> {
+  style?: Record<string, unknown> | ((node: N) => Record<string, unknown> | undefined);
+  /** Web only. */
+  className?: string | ((node: N) => string | undefined);
+}
+
+/** Map of node-type → style override. Each entry is typed to its specific
+ *  AST node so the function form of `style`/`className` gets correct
+ *  autocomplete (e.g. `heading.style(node)` sees `node.depth`). */
+export interface BlockStyles {
+  root?: BlockStyleConfig;
+  paragraph?: BlockStyleConfig<import('../core/parser/ast').ParagraphNode>;
+  heading?: BlockStyleConfig<import('../core/parser/ast').HeadingNode>;
+  text?: BlockStyleConfig<import('../core/parser/ast').TextNode>;
+  strong?: BlockStyleConfig<import('../core/parser/ast').StrongNode>;
+  emphasis?: BlockStyleConfig<import('../core/parser/ast').EmphasisNode>;
+  delete?: BlockStyleConfig<import('../core/parser/ast').DeleteNode>;
+  inlineCode?: BlockStyleConfig<import('../core/parser/ast').InlineCodeNode>;
+  code?: BlockStyleConfig<CodeNode>;
+  blockquote?: BlockStyleConfig<import('../core/parser/ast').BlockquoteNode>;
+  list?: BlockStyleConfig<import('../core/parser/ast').ListNode>;
+  listItem?: BlockStyleConfig<import('../core/parser/ast').ListItemNode>;
+  link?: BlockStyleConfig<import('../core/parser/ast').LinkNode>;
+  image?: BlockStyleConfig<ImageNode>;
+  thematicBreak?: BlockStyleConfig<import('../core/parser/ast').ThematicBreakNode>;
+  table?: BlockStyleConfig<TableNode>;
+  tableRow?: BlockStyleConfig<import('../core/parser/ast').TableRowNode>;
+  tableCell?: BlockStyleConfig<import('../core/parser/ast').TableCellNode>;
+  html?: BlockStyleConfig<import('../core/parser/ast').HtmlNode>;
+  break?: BlockStyleConfig<import('../core/parser/ast').BreakNode>;
+}
+
 export interface TextSelectionAction {
   /** Label shown in the selection menu. */
   label: string;
@@ -202,6 +240,10 @@ export interface LLMMarkdownProps {
   /** Per-block-type slots (before/after/actions) for block renderers that
    *  benefit from a toolbar — e.g. Copy/Run on code blocks, Export on tables. */
   blockSlots?: BlockSlots;
+  /** Per-block-type style + className overrides merged over the default
+   *  renderer. Lighter weight than `components` — use this when you only
+   *  want to tweak visuals, not restructure the DOM. */
+  blockStyles?: BlockStyles;
 }
 
 export type DeepPartial<T> = T extends object

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { LLMMarkdown, darkTheme } from 'llm-markdown/web';
 import type {
   BlockSlots,
+  BlockStyles,
   CardAnimationPreset,
   DirectiveRegistry,
   Direction,
@@ -10,9 +11,11 @@ import type {
 import { presets } from '../../../shared/demo-content';
 import { Chart } from '../directives/Chart';
 import { Callout } from '../directives/Callout';
+import { Email } from '../directives/Email';
 import { MOBILE_QUERY, useMediaQuery } from '../useMediaQuery';
 import { Drawer } from '../components/Drawer';
 import { AppNav } from '../components/AppNav';
+import { GitHubLink } from '../components/GitHubLink';
 import { FONT_STACK, MONO_STACK } from '../fonts';
 import type { Route } from '../router';
 
@@ -71,7 +74,7 @@ export function Playground({
   }, [source, streaming, charsPerTick, tickMs]);
 
   const directives: DirectiveRegistry = useMemo(
-    () => ({ chart: Chart, callout: Callout }),
+    () => ({ chart: Chart, callout: Callout, email: Email }),
     []
   );
 
@@ -141,6 +144,115 @@ export function Playground({
     }),
     []
   );
+
+  // Editable demo: per-block cosmetic tweaks merged over the default
+  // renderers. Controls live in the sidebar so you can experiment without
+  // editing this file.
+  const [bsHeading, setBsHeading] = useState({
+    enabled: true,
+    color: '#6366F1',
+    fontSize: 34,
+    className: '',
+  });
+  const [bsParagraph, setBsParagraph] = useState({
+    enabled: false,
+    color: '#111827',
+    fontSize: 16,
+    className: '',
+  });
+  const [bsCode, setBsCode] = useState({
+    enabled: true,
+    background: '#0B1020',
+    padding: 16,
+    borderRadius: 10,
+    className: '',
+  });
+  const [bsBlockquote, setBsBlockquote] = useState({
+    enabled: true,
+    color: '#6B7280',
+    fontStyle: 'italic' as 'normal' | 'italic',
+    className: '',
+  });
+  const [bsTable, setBsTable] = useState({
+    enabled: false,
+    borderColor: '#E5E7EB',
+    fontSize: 14,
+    className: '',
+  });
+  const [bsTableCell, setBsTableCell] = useState({
+    enabled: false,
+    padding: 10,
+    color: '#111827',
+    className: '',
+  });
+  const [bsList, setBsList] = useState({
+    enabled: false,
+    color: '#111827',
+    paddingLeft: 28,
+    className: '',
+  });
+  const [bsListItem, setBsListItem] = useState({
+    enabled: false,
+    color: '#111827',
+    className: '',
+  });
+
+  const blockStylesDemo: BlockStyles = useMemo(() => {
+    const out: BlockStyles = {};
+    if (bsHeading.enabled) {
+      out.heading = {
+        style: { color: bsHeading.color, fontSize: bsHeading.fontSize },
+        ...(bsHeading.className ? { className: bsHeading.className } : {}),
+      };
+    }
+    if (bsParagraph.enabled) {
+      out.paragraph = {
+        style: { color: bsParagraph.color, fontSize: bsParagraph.fontSize },
+        ...(bsParagraph.className ? { className: bsParagraph.className } : {}),
+      };
+    }
+    if (bsCode.enabled) {
+      out.code = {
+        style: {
+          backgroundColor: bsCode.background,
+          padding: bsCode.padding,
+          borderRadius: bsCode.borderRadius,
+        },
+        ...(bsCode.className ? { className: bsCode.className } : {}),
+      };
+    }
+    if (bsBlockquote.enabled) {
+      out.blockquote = {
+        style: { color: bsBlockquote.color, fontStyle: bsBlockquote.fontStyle },
+        ...(bsBlockquote.className ? { className: bsBlockquote.className } : {}),
+      };
+    }
+    if (bsTable.enabled) {
+      out.table = {
+        style: { borderColor: bsTable.borderColor, fontSize: bsTable.fontSize },
+        ...(bsTable.className ? { className: bsTable.className } : {}),
+      };
+    }
+    if (bsTableCell.enabled) {
+      out.tableCell = {
+        style: { padding: bsTableCell.padding, color: bsTableCell.color },
+        ...(bsTableCell.className ? { className: bsTableCell.className } : {}),
+      };
+    }
+    if (bsList.enabled) {
+      out.list = {
+        style: { color: bsList.color, paddingInlineStart: bsList.paddingLeft },
+        ...(bsList.className ? { className: bsList.className } : {}),
+      };
+    }
+    if (bsListItem.enabled) {
+      out.listItem = {
+        style: { color: bsListItem.color },
+        ...(bsListItem.className ? { className: bsListItem.className } : {}),
+      };
+    }
+    return out;
+  }, [bsHeading, bsParagraph, bsCode, bsBlockquote, bsTable, bsTableCell, bsList, bsListItem]);
 
   const bg = dark ? '#0B0B0F' : '#f3f4f6';
   const fg = dark ? '#F3F4F6' : '#111827';
@@ -325,6 +437,105 @@ export function Playground({
         <Toggle label="After" checked={showAfter} onChange={setShowAfter} dark={dark} />
         <Toggle label="Footer" checked={showFooter} onChange={setShowFooter} dark={dark} />
       </Section>
+
+      <Section title="Block styles" dark={dark}>
+        <div style={{ fontSize: 11, color: muted, marginBottom: 6, lineHeight: 1.4 }}>
+          Merged over default renderers. Toggle a block to apply; edit fields live.
+        </div>
+        <BlockStyleEditor
+          label="heading"
+          state={bsHeading}
+          onChange={(p) => setBsHeading((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'color', label: 'color', kind: 'color' },
+            { key: 'fontSize', label: 'font-size', kind: 'number', min: 12, max: 64 },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-heading' },
+          ]}
+        />
+        <BlockStyleEditor
+          label="paragraph"
+          state={bsParagraph}
+          onChange={(p) => setBsParagraph((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'color', label: 'color', kind: 'color' },
+            { key: 'fontSize', label: 'font-size', kind: 'number', min: 12, max: 32 },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-p' },
+          ]}
+        />
+        <BlockStyleEditor
+          label="code"
+          state={bsCode}
+          onChange={(p) => setBsCode((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'background', label: 'background', kind: 'color' },
+            { key: 'padding', label: 'padding', kind: 'number', min: 0, max: 48 },
+            { key: 'borderRadius', label: 'radius', kind: 'number', min: 0, max: 24 },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-code' },
+          ]}
+        />
+        <BlockStyleEditor
+          label="blockquote"
+          state={bsBlockquote}
+          onChange={(p) => setBsBlockquote((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'color', label: 'color', kind: 'color' },
+            {
+              key: 'fontStyle',
+              label: 'font-style',
+              kind: 'select',
+              options: ['normal', 'italic'],
+            },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-bq' },
+          ]}
+        />
+        <BlockStyleEditor
+          label="table"
+          state={bsTable}
+          onChange={(p) => setBsTable((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'borderColor', label: 'border color', kind: 'color' },
+            { key: 'fontSize', label: 'font-size', kind: 'number', min: 10, max: 24 },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-table' },
+          ]}
+        />
+        <BlockStyleEditor
+          label="tableCell"
+          state={bsTableCell}
+          onChange={(p) => setBsTableCell((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'padding', label: 'padding', kind: 'number', min: 0, max: 24 },
+            { key: 'color', label: 'color', kind: 'color' },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-cell' },
+          ]}
+        />
+        <BlockStyleEditor
+          label="list"
+          state={bsList}
+          onChange={(p) => setBsList((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'color', label: 'color', kind: 'color' },
+            { key: 'paddingLeft', label: 'indent (px)', kind: 'number', min: 0, max: 64 },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-list' },
+          ]}
+        />
+        <BlockStyleEditor
+          label="listItem"
+          state={bsListItem}
+          onChange={(p) => setBsListItem((s) => ({ ...s, ...p }))}
+          dark={dark}
+          fields={[
+            { key: 'color', label: 'color', kind: 'color' },
+            { key: 'className', label: 'className (web)', kind: 'text', placeholder: 'my-li' },
+          ]}
+        />
+      </Section>
     </div>
   );
 
@@ -370,6 +581,7 @@ export function Playground({
             <div style={{ fontSize: 14, fontWeight: 700 }}>llm-markdown</div>
           </div>
           <AppNav current="/" onNavigate={onNavigate} dark={dark} />
+          <GitHubLink dark={dark} />
         </div>
       ) : null}
 
@@ -429,7 +641,10 @@ export function Playground({
                   Try every feature with live controls
                 </div>
               </div>
-              <AppNav current="/" onNavigate={onNavigate} dark={dark} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <AppNav current="/" onNavigate={onNavigate} dark={dark} />
+                <GitHubLink dark={dark} />
+              </div>
             </div>
           ) : null}
 
@@ -439,6 +654,7 @@ export function Playground({
             directives={directives}
             textSelection={textSelection}
             blockSlots={blockSlots}
+            blockStyles={blockStylesDemo}
             theme={{
               ...(dark ? darkTheme : {}),
               typography: { fontFamily: FONT_STACK, monoFamily: MONO_STACK },
@@ -650,5 +866,128 @@ function HamburgerIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
+  );
+}
+
+type BsField =
+  | { key: string; label: string; kind: 'color' }
+  | { key: string; label: string; kind: 'number'; min?: number; max?: number }
+  | { key: string; label: string; kind: 'text'; placeholder?: string }
+  | { key: string; label: string; kind: 'select'; options: string[] };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function BlockStyleEditor({
+  label,
+  state,
+  onChange,
+  dark,
+  fields,
+}: {
+  label: string;
+  state: Record<string, unknown> & { enabled: boolean };
+  onChange: (patch: Record<string, unknown>) => void;
+  dark: boolean;
+  fields: BsField[];
+}) {
+  const muted = dark ? '#9CA3AF' : '#6B7280';
+  const border = dark ? '#2A2A33' : '#E5E7EB';
+  return (
+    <div
+      style={{
+        padding: 10,
+        border: `1px solid ${border}`,
+        borderRadius: 8,
+        background: dark ? '#14141A' : '#FAFAFA',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      <Toggle
+        label={label}
+        checked={state.enabled}
+        onChange={(v) => onChange({ enabled: v })}
+        dark={dark}
+      />
+      {state.enabled ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {fields.map((f) => (
+            <label
+              key={f.key}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(88px, 1fr) minmax(0, 1.4fr)',
+                gap: 8,
+                alignItems: 'center',
+                fontSize: 12,
+                color: muted,
+              }}
+            >
+              <span>{f.label}</span>
+              {f.kind === 'color' ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="color"
+                    value={(state[f.key] as string) ?? '#000000'}
+                    onChange={(e) => onChange({ [f.key]: e.target.value })}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      padding: 0,
+                      border: `1px solid ${border}`,
+                      borderRadius: 6,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={(state[f.key] as string) ?? ''}
+                    onChange={(e) => onChange({ [f.key]: e.target.value })}
+                    style={{
+                      ...inputStyle(dark),
+                      padding: '4px 6px',
+                      fontSize: 12,
+                      fontFamily: "'JetBrains Mono', ui-monospace, Menlo, monospace",
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  />
+                </div>
+              ) : f.kind === 'number' ? (
+                <input
+                  type="number"
+                  value={state[f.key] as number}
+                  min={f.min}
+                  max={f.max}
+                  onChange={(e) => onChange({ [f.key]: Number(e.target.value) })}
+                  style={{ ...inputStyle(dark), padding: '4px 6px', fontSize: 12 }}
+                />
+              ) : f.kind === 'select' ? (
+                <select
+                  value={(state[f.key] as string) ?? ''}
+                  onChange={(e) => onChange({ [f.key]: e.target.value })}
+                  style={{ ...selectStyle(dark), padding: '4px 6px', fontSize: 12 }}
+                >
+                  {f.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={(state[f.key] as string) ?? ''}
+                  placeholder={f.placeholder}
+                  onChange={(e) => onChange({ [f.key]: e.target.value })}
+                  style={{ ...inputStyle(dark), padding: '4px 6px', fontSize: 12 }}
+                />
+              )}
+            </label>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

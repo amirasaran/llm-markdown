@@ -64,6 +64,21 @@ Callouts **render markdown** inside their bodies, so you get \`code\`, lists, an
 - three
 :::
 
+An actionable email draft via the \`email\` directive — tap the button to open your email client with the subject + recipient + body pre-filled:
+
+:::email{subject="Maintenance request: leaking kitchen faucet" to="landlord@example.com"}
+Hi [Landlord Name],
+
+I wanted to let you know about an issue in my apartment. [Briefly describe what's broken — e.g. "The kitchen faucet is leaking" or "The heating isn't working."]
+
+I'd appreciate it if you could arrange for a repair at your earliest convenience. Happy to coordinate a time that works for your technician.
+
+Thanks,
+[Your Name]
+[Your Address / Apartment Number]
+[Your Phone Number]
+:::
+
 ---
 
 _That's the whole tour._
@@ -497,6 +512,41 @@ Here is a table that may render partially:
 | 4    | pending |
 `;
 
+export const emailMarkdown = `# Email draft directive
+
+The \`:::email\` directive renders an actionable email draft: a preview with the subject + recipient, the body rendered as markdown, and a button that opens the user's email client via \`mailto:\`.
+
+:::email{subject="Maintenance request: leaking kitchen faucet" to="landlord@example.com"}
+Hi [Landlord Name],
+
+I wanted to let you know about an issue in my apartment. [Briefly describe what's broken — e.g. "The kitchen faucet is leaking" or "The heating isn't working."]
+
+I'd appreciate it if you could arrange for a repair at your earliest convenience. Happy to coordinate a time that works for your technician.
+
+Thanks,
+[Your Name]
+[Your Address / Apartment Number]
+[Your Phone Number]
+:::
+
+It also supports shorter notes with inline formatting:
+
+:::email{subject="Quick follow-up" to="team@example.com"}
+Hey team,
+
+Just a **quick reminder** about tomorrow's sync. Agenda:
+
+- Review the *Q2 roadmap*
+- Walk through the \`llm-markdown\` integration
+- Unblock Alice on her release branch
+
+See you at 10:00.
+
+Cheers,
+You
+:::
+`;
+
 export const fullMarkdown = demoMarkdown;
 
 export interface Preset {
@@ -518,6 +568,7 @@ export const presets: Preset[] = [
   { id: 'arabic', label: 'Arabic (العربية)', text: arabicMarkdown },
   { id: 'align', label: 'Table alignment stress test', text: tableAlignmentMarkdown },
   { id: 'directives', label: 'Directives (charts, callouts)', text: directivesMarkdown },
+  { id: 'email', label: 'Email directive', text: emailMarkdown },
   { id: 'images', label: 'Images', text: imagesMarkdown },
   { id: 'streaming', label: 'Streaming edge cases', text: streamingEdgeMarkdown },
 ];

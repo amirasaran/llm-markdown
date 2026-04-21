@@ -19,6 +19,7 @@ import type {
 } from '../../core/parser/ast';
 import { View, Text, TextInput, Image, Linking, Pressable } from '../rn';
 import { HScroll } from '../scroll/HScroll';
+import { useBlockStyle } from '../../core/blockStyle';
 import {
   SelectableStringText,
   useTextSelection,
@@ -57,6 +58,7 @@ export const HeadingR = memo(function HeadingR({
   theme: Theme;
 }) {
   const sel = useTextSelection();
+  const { style: userStyle } = useBlockStyle(node);
   const sizeMap: Record<number, number> = {
     1: theme.typography.sizeH1,
     2: theme.typography.sizeH2,
@@ -65,14 +67,17 @@ export const HeadingR = memo(function HeadingR({
     5: theme.typography.sizeBase,
     6: theme.typography.sizeBase,
   };
-  const headingStyle = {
-    fontSize: sizeMap[node.depth],
-    fontWeight: '700' as const,
-    color: theme.colors.text,
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    writingDirection: node.dir,
-  };
+  const headingStyle = [
+    {
+      fontSize: sizeMap[node.depth],
+      fontWeight: '700' as const,
+      color: theme.colors.text,
+      marginTop: theme.spacing.lg,
+      marginBottom: theme.spacing.sm,
+      writingDirection: node.dir,
+    },
+    userStyle,
+  ];
   // When selection is on, use TextInput instead of Text. On iOS multiline
   // TextInput maps to UITextView, which supports attributed text from
   // <Text> children AND renders selection highlights correctly (the plain
@@ -116,6 +121,7 @@ export const ParagraphR = memo(function ParagraphR({
   theme: Theme;
 }) {
   const sel = useTextSelection();
+  const { style: userStyle } = useBlockStyle(node);
   // RN forbids <Image> (and most non-Text views) as a child of <Text>. If the
   // paragraph contains any image child, fall back to a View wrapper so each
   // rendered child becomes a block-level sibling instead of a Text descendant.
@@ -123,22 +129,28 @@ export const ParagraphR = memo(function ParagraphR({
   if (hasBlockChild) {
     return (
       <View
-        style={{
-          marginVertical: theme.spacing.sm,
-          gap: theme.spacing.xs,
-        }}
+        style={[
+          {
+            marginVertical: theme.spacing.sm,
+            gap: theme.spacing.xs,
+          },
+          userStyle,
+        ]}
       >
         {children}
       </View>
     );
   }
-  const paragraphStyle = {
-    color: theme.colors.text,
-    fontSize: theme.typography.sizeBase,
-    lineHeight: theme.typography.sizeBase * theme.typography.lineHeight,
-    marginVertical: theme.spacing.sm,
-    writingDirection: node.dir,
-  };
+  const paragraphStyle = [
+    {
+      color: theme.colors.text,
+      fontSize: theme.typography.sizeBase,
+      lineHeight: theme.typography.sizeBase * theme.typography.lineHeight,
+      marginVertical: theme.spacing.sm,
+      writingDirection: node.dir,
+    },
+    userStyle,
+  ];
   // Use TextInput when selection is enabled. On iOS multiline TextInput is
   // a UITextView which accepts <Text> children as attributed text AND
   // renders selection highlights properly (the plain <Text selectable>
@@ -231,14 +243,18 @@ export const InlineCodeR = memo(function InlineCodeR({
 }, memoEqual);
 
 export const CodeR = memo(function CodeR({ node, theme }: { node: CodeNode; theme: Theme }) {
+  const { style: userStyle } = useBlockStyle(node);
   return (
     <View
-      style={{
-        backgroundColor: theme.colors.codeBackground,
-        borderRadius: theme.radii.md,
-        padding: theme.spacing.md,
-        marginVertical: theme.spacing.sm,
-      }}
+      style={[
+        {
+          backgroundColor: theme.colors.codeBackground,
+          borderRadius: theme.radii.md,
+          padding: theme.spacing.md,
+          marginVertical: theme.spacing.sm,
+        },
+        userStyle,
+      ]}
     >
       <HScroll>
         <SelectableStringText
@@ -264,12 +280,16 @@ export const BlockquoteR = memo(function BlockquoteR({
   theme: Theme;
 }) {
   const isRtl = node.dir === 'rtl';
+  const { style: userStyle } = useBlockStyle(node);
   return (
     <View
-      style={{
-        flexDirection: isRtl ? 'row-reverse' : 'row',
-        marginVertical: theme.spacing.sm,
-      }}
+      style={[
+        {
+          flexDirection: isRtl ? 'row-reverse' : 'row',
+          marginVertical: theme.spacing.sm,
+        },
+        userStyle,
+      ]}
     >
       <View
         style={{
@@ -286,6 +306,7 @@ export const BlockquoteR = memo(function BlockquoteR({
 }, memoEqual);
 
 export const ListR = memo(function ListR({
+  node,
   children,
   theme,
 }: {
@@ -293,7 +314,10 @@ export const ListR = memo(function ListR({
   children?: ReactNode;
   theme: Theme;
 }) {
-  return <View style={{ marginVertical: theme.spacing.sm }}>{children}</View>;
+  const { style: userStyle } = useBlockStyle(node);
+  return (
+    <View style={[{ marginVertical: theme.spacing.sm }, userStyle]}>{children}</View>
+  );
 }, memoEqual);
 
 export const ListItemR = memo(function ListItemR({
@@ -308,16 +332,20 @@ export const ListItemR = memo(function ListItemR({
   const rtl = node.dir === 'rtl';
   const isTask = node.checked !== undefined && node.checked !== null;
   const marker = isTask ? (node.checked ? '☑' : '☐') : '•';
+  const { style: userStyle } = useBlockStyle(node);
   // ParagraphR (the default child of every list item in our parser) applies
   // marginVertical: theme.spacing.sm to its text. The marker sits in a Text
   // of its own with no margin, so without this offset it floats above the
   // first line of content. Matching top margin puts them on the same line.
   return (
     <View
-      style={{
-        flexDirection: rtl ? 'row-reverse' : 'row',
-        marginBottom: theme.spacing.xs,
-      }}
+      style={[
+        {
+          flexDirection: rtl ? 'row-reverse' : 'row',
+          marginBottom: theme.spacing.xs,
+        },
+        userStyle,
+      ]}
     >
       <Text
         style={{
@@ -354,9 +382,10 @@ export const LinkR = memo(function LinkR({
   children?: ReactNode;
   theme: Theme;
 }) {
+  const { style: userStyle } = useBlockStyle(node);
   return (
     <Text
-      style={{ color: theme.colors.link, textDecorationLine: 'underline' }}
+      style={[{ color: theme.colors.link, textDecorationLine: 'underline' }, userStyle]}
       onPress={() => Linking.openURL(node.url)}
     >
       {children}
@@ -375,8 +404,9 @@ export const ImageR = memo(function ImageR({
   // aspect ratio; fall back to 16:9 while the image is still loading or if
   // it fails. Capped by maxHeight so portraits can't dominate the screen.
   const [ratio, setRatio] = useState<number | null>(null);
+  const { style: userStyle } = useBlockStyle(node);
   return (
-    <View style={{ marginVertical: theme.spacing.sm }}>
+    <View style={[{ marginVertical: theme.spacing.sm }, userStyle]}>
       <Image
         source={{ uri: node.url }}
         accessibilityLabel={node.alt}
@@ -403,18 +433,22 @@ export const ImageR = memo(function ImageR({
 }, memoEqual);
 
 export const ThematicBreakR = memo(
-  function ThematicBreakR({ theme }: { theme: Theme }) {
+  function ThematicBreakR({ node, theme }: { node: BaseNode; theme: Theme }) {
+    const { style: userStyle } = useBlockStyle(node as unknown as import('../../core/parser/ast').AnyNode);
     return (
       <View
-        style={{
-          height: 1,
-          backgroundColor: theme.colors.border,
-          marginVertical: theme.spacing.lg,
-        }}
+        style={[
+          {
+            height: 1,
+            backgroundColor: theme.colors.border,
+            marginVertical: theme.spacing.lg,
+          },
+          userStyle,
+        ]}
       />
     );
   },
-  (a, b) => a.theme === b.theme
+  (a, b) => a.node.id === b.node.id && a.theme === b.theme
 );
 
 /** Conservative guess of horizontal chrome around a table (card padding +
@@ -444,17 +478,21 @@ export const TableR = memo(function TableR({
   const idealColWidth = theme.layout.tableColumnWidth;
   const tableWidth = Math.max(numCols * idealColWidth, available);
   const perCol = Math.floor(tableWidth / numCols);
+  const { style: userStyle } = useBlockStyle(node);
   return (
     <TableColumnWidthContext.Provider value={perCol}>
       <HScroll style={{ marginVertical: theme.spacing.sm }}>
         <View
-          style={{
-            width: perCol * numCols,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radii.sm,
-            overflow: 'hidden',
-          }}
+          style={[
+            {
+              width: perCol * numCols,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.sm,
+              overflow: 'hidden',
+            },
+            userStyle,
+          ]}
         >
           {children}
         </View>
@@ -489,19 +527,23 @@ export const TableCellR = memo(function TableCellR({
 }) {
   const colWidth = useContext(TableColumnWidthContext);
   const sel = useTextSelection();
+  const { style: userStyle } = useBlockStyle(node);
   const cellTextStyle = {
     color: theme.colors.text,
     fontWeight: (node.header ? '600' : '400') as '600' | '400',
   };
   return (
     <View
-      style={{
-        width: colWidth,
-        borderWidth: 0.5,
-        borderColor: theme.colors.border,
-        padding: theme.spacing.sm,
-        justifyContent: 'center',
-      }}
+      style={[
+        {
+          width: colWidth,
+          borderWidth: 0.5,
+          borderColor: theme.colors.border,
+          padding: theme.spacing.sm,
+          justifyContent: 'center',
+        },
+        userStyle,
+      ]}
     >
       {sel.enabled ? (
         allPlainText(node.children) ? (

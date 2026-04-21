@@ -4,6 +4,7 @@ import type { ComponentOverrides, DirectiveRegistry } from 'llm-markdown/web';
 import { MOBILE_QUERY, useMediaQuery } from '../useMediaQuery';
 import { Drawer } from '../components/Drawer';
 import { AppNav } from '../components/AppNav';
+import { GitHubLink } from '../components/GitHubLink';
 import type { Route } from '../router';
 import { Chart } from '../directives/Chart';
 import { Callout } from '../directives/Callout';
@@ -84,6 +85,7 @@ export function DocsPage({ onNavigate }: { onNavigate: (r: Route) => void }) {
           <div style={{ fontSize: isMobile ? 14 : 18, fontWeight: 700 }}>Documentation</div>
         </div>
         <AppNav current="/docs" onNavigate={onNavigate} dark={dark} />
+        <GitHubLink dark={dark} />
         <button
           onClick={() => setDark((v) => !v)}
           aria-label="Toggle dark mode"
