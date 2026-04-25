@@ -653,6 +653,11 @@ export function Playground({
             streaming={streaming}
             directives={directives}
             textSelection={textSelection}
+            image={{
+              onPress: (node) => window.alert(`Image click\n\n${node.url}`),
+              onLongPress: (node) =>
+                window.alert(`Image long-press\n\n${node.url}`),
+            }}
             blockSlots={blockSlots}
             blockStyles={blockStylesDemo}
             theme={{

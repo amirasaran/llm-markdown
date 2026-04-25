@@ -39,20 +39,45 @@
       "import": "./dist/native.js",
       "require": "./dist/native.cjs"
     },
+    "./native/dom": {
+      "types": "./dist/native-dom.d.ts",
+      "react-native": "./dist/native-dom.js",
+      "import": "./dist/native-dom.js",
+      "require": "./dist/native-dom.cjs"
+    },
     "./core": {
       "types": "./dist/core.d.ts",
       "import": "./dist/core.js",
       "require": "./dist/core.cjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "scripts",
     "src",
+    "native",
+    "LLMSelectableText.podspec",
+    "react-native.config.js",
     "README.md",
     "LICENSE"
   ],
+  "codegenConfig": {
+    "name": "LLMSelectableTextViewSpec",
+    "type": "components",
+    "jsSrcsDir": "src/native/fabric",
+    "android": {
+      "javaPackageName": "com.facebook.react.viewmanagers"
+    },
+    "ios": {
+      "componentProvider": {
+        "LLMSelectableTextView": "LLMSelectableTextView"
+      }
+    }
+  },
   "scripts": {
-    "build": "tsup",
+    "prebuild": "rm -rf dist",
+    "build": "tsup && node scripts/ensure-use-dom.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -64,17 +89,23 @@
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
-    "react-native": ">=0.72.0",
+    "react-native": ">=0.73.0",
     "react-native-reanimated": ">=3.0.0",
-    "react-native-selectable-text": ">=1.0.0",
-    "framer-motion": ">=11.0.0"
+    "framer-motion": ">=11.0.0",
+    "expo": ">=52.0.0",
+    "react-native-web": ">=0.19.0",
+    "react-native-webview": ">=13.0.0",
+    "@expo/metro-runtime": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "react-dom": { "optional": true },
     "react-native": { "optional": true },
     "react-native-reanimated": { "optional": true },
-    "react-native-selectable-text": { "optional": true },
-    "framer-motion": { "optional": true }
+    "framer-motion": { "optional": true },
+    "expo": { "optional": true },
+    "react-native-web": { "optional": true },
+    "react-native-webview": { "optional": true },
+    "@expo/metro-runtime": { "optional": true }
   },
   "dependencies": {},
   "devDependencies": {

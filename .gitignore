@@ -8,3 +8,10 @@ coverage
 .expo-shared
 .next
 .vite
+
+# Expo prebuild output for the native example. Custom native code lives in
+# /native/ios and /native/android at the repo root and gets autolinked, so
+# examples/native/ios and examples/native/android are pure prebuild artifacts.
+# Regenerate with: pnpm --filter llm-markdown-example-native exec expo prebuild
+examples/native/ios/
+examples/native/android/

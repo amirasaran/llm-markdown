@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { Alert, Share, Text, View } from 'react-native';
 import { LLMMarkdown, darkTheme } from 'llm-markdown/native';
 import type { DirectiveRegistry } from 'llm-markdown/native';
+import RichDom from '../dom/RichDom';
 import { Chart } from '../directives/Chart';
 import { Callout } from '../directives/Callout';
 import { Email } from '../directives/Email';
@@ -10,12 +11,16 @@ import { pick } from '../theme';
 
 const directives: DirectiveRegistry = { chart: Chart, callout: Callout, email: Email };
 
+export type MessageRenderer = 'native' | 'dom';
+
 export function MessageBubble({
   message,
   settings,
+  renderer = 'native',
 }: {
   message: ChatMessage;
   settings: Settings;
+  renderer?: MessageRenderer;
 }) {
   const c = pick(settings.dark);
   const isUser = message.role === 'user';
@@ -79,43 +84,72 @@ export function MessageBubble({
             : { width: '88%', maxWidth: '88%' }
         }
       >
-        <LLMMarkdown
-          text={message.text}
-          streaming={!isUser && message.streaming}
-          directives={directives}
-          direction={settings.direction}
-          theme={theme}
-          textSelection
-          card={bubbleCard}
-          header={
-            settings.showHeader ? (
-              <Text style={{ fontSize: 11, color: c.textMuted, fontWeight: '600' }}>
-                {isUser ? 'You' : 'Assistant'}
-              </Text>
-            ) : undefined
-          }
-          before={
-            settings.showBefore ? (
-              <Text style={{ fontSize: 11, color: c.textMuted }}>
-                {isUser ? 'Sent' : 'Reply'} · {message.streaming ? 'streaming' : 'complete'}
-              </Text>
-            ) : undefined
-          }
-          after={
-            settings.showAfter ? (
-              <Text style={{ fontSize: 11, color: c.textMuted, fontStyle: 'italic' }}>
-                rendered by llm-markdown
-              </Text>
-            ) : undefined
-          }
-          footer={
-            settings.showFooter ? (
-              <Text style={{ fontSize: 11, color: c.textMuted }}>
-                {timeLabel} · {isUser ? 'delivered' : message.streaming ? 'typing…' : 'seen'}
-              </Text>
-            ) : undefined
-          }
-        />
+        {renderer === 'dom' && !isUser ? (
+          <RichDom
+            text={message.text}
+            streaming={message.streaming}
+            direction={settings.direction}
+            theme={theme}
+            card={bubbleCard}
+            bare
+            textSelection={{ enabled: true, actions: ['Ask AI', 'Quote', 'Share'] }}
+            onTextSelectionAction={async (label, selectedText) => {
+              if (label === 'Ask AI') Alert.alert('Ask AI', selectedText);
+              else if (label === 'Quote') Alert.alert('Quoted', selectedText);
+              else if (label === 'Share') await Share.share({ message: selectedText });
+            }}
+            dom={{
+              matchContents: true,
+              scrollEnabled: false,
+              style: { backgroundColor: 'transparent' },
+            }}
+          />
+        ) : (
+          <LLMMarkdown
+            text={message.text}
+            streaming={!isUser && message.streaming}
+            directives={directives}
+            direction={settings.direction}
+            theme={theme}
+            textSelection={{
+              enabled: true,
+              actions: [
+                { label: 'Ask AI', onPress: (t) => Alert.alert('Ask AI', t) },
+                { label: 'Quote', onPress: (t) => Alert.alert('Quoted', t) },
+                { label: 'Share', onPress: (t) => Share.share({ message: t }) },
+              ],
+            }}
+            card={bubbleCard}
+            header={
+              settings.showHeader ? (
+                <Text style={{ fontSize: 11, color: c.textMuted, fontWeight: '600' }}>
+                  {isUser ? 'You' : 'Assistant'}
+                </Text>
+              ) : undefined
+            }
+            before={
+              settings.showBefore ? (
+                <Text style={{ fontSize: 11, color: c.textMuted }}>
+                  {isUser ? 'Sent' : 'Reply'} · {message.streaming ? 'streaming' : 'complete'}
+                </Text>
+              ) : undefined
+            }
+            after={
+              settings.showAfter ? (
+                <Text style={{ fontSize: 11, color: c.textMuted, fontStyle: 'italic' }}>
+                  rendered by llm-markdown
+                </Text>
+              ) : undefined
+            }
+            footer={
+              settings.showFooter ? (
+                <Text style={{ fontSize: 11, color: c.textMuted }}>
+                  {timeLabel} · {isUser ? 'delivered' : message.streaming ? 'typing…' : 'seen'}
+                </Text>
+              ) : undefined
+            }
+          />
+        )}
         <Text
           style={{
             marginTop: 2,

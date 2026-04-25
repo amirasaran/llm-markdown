@@ -72,6 +72,7 @@ interface LLMMarkdownProps {
   textSelection?: boolean | TextSelectionConfig;
   blockSlots?: BlockSlots;
   blockStyles?: BlockStyles;
+  image?: ImageConfig;                       // tap / long-press handlers for <img>
   onHeadingInView?: (id, depth, text) => void;
   onDirectiveRender?: (node) => ReactNode | null | undefined;
 }
@@ -168,6 +169,26 @@ When you want to tweak the visual of a block type — change a background, add a
 - \`className\` is **web only** and silently ignored on native. Perfect for Tailwind / CSS Modules / utility frameworks.
 - Applied to block renderers in v1 (heading, paragraph, code, blockquote, list, listItem, link, image, thematicBreak, table, tableRow, tableCell). Inline types use \`components\` for now.
 - Use \`blockStyles\` for cosmetic changes; use \`components\` when you need a full replacement.
+
+---
+
+## Image interactions (tap / long-press)
+
+Attach tap and long-press handlers to every rendered image. Both callbacks receive the full \`ImageNode\` so you have \`url\`, \`alt\`, and \`title\` available — handy for a lightbox, a context menu, or copy-URL.
+
+\`\`\`tsx
+<LLMMarkdown
+  text={text}
+  image={{
+    onPress: (node) => openLightbox(node.url),
+    onLongPress: (node) => showMenu({ url: node.url, alt: node.alt }),
+  }}
+/>
+\`\`\`
+
+- The default image renderer only wraps in a pressable when at least one handler is set — plain images stay plain for accessibility.
+- **Web**: \`onPress\` fires on \`click\`; \`onLongPress\` fires on either a 500ms \`pointerdown\` hold (covers mobile) **or** the native \`contextmenu\` event (covers desktop right-click). If long-press fires, the following click is suppressed so callbacks don't double-fire. Keyboard activation (\`Enter\` / \`Space\`) also triggers \`onPress\`.
+- **Native**: wraps the RN \`<Image>\` in a \`<Pressable>\` with \`accessibilityRole="imagebutton"\`. Maps directly to RN's \`onPress\` / \`onLongPress\`.
 
 ---
 

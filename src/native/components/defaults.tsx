@@ -17,27 +17,22 @@ import type {
   TableCellNode,
   BaseNode,
 } from '../../core/parser/ast';
-import { View, Text, TextInput, Image, Linking, Pressable } from '../rn';
+import { View, Text, Image, Linking, Pressable } from '../rn';
 import { HScroll } from '../scroll/HScroll';
 import { useBlockStyle } from '../../core/blockStyle';
+import { RendererContext } from '../../core/registry/componentRegistry';
 import {
+  SelectableBlock,
   SelectableStringText,
+  useInsideSelectableGroup,
   useTextSelection,
-  warnRichParagraphOnce,
 } from './selectableText';
 
-/** True when every AST child is a plain text node — i.e. the block has no
- *  bold/italic/link/inline-code children. Such blocks can render via
- *  <TextInput editable={false}> (which shows selection highlight correctly
- *  on iOS Fabric) without losing any formatting. */
-function allPlainText(children: Array<{ type: string }>): boolean {
-  return children.length > 0 && children.every((c) => c.type === 'text');
-}
-
-/** Concat plain-text children into a single string. */
-function flattenPlainText(children: Array<{ type: string; value?: string }>): string {
-  return children.map((c) => c.value ?? '').join('');
-}
+// Signals to child renderers (ParagraphR in particular) that they're being
+// rendered as a list item's body. Paragraphs suppress their own vertical
+// margins in this case — otherwise every bullet gets paragraph-top + paragraph-
+// bottom + list-item-bottom stacked, producing visibly huge gaps.
+const InsideListItemContext = createContext(false);
 
 const memoEqual = (
   a: { node: BaseNode; theme: Theme },
@@ -58,6 +53,7 @@ export const HeadingR = memo(function HeadingR({
   theme: Theme;
 }) {
   const sel = useTextSelection();
+  const insideGroup = useInsideSelectableGroup();
   const { style: userStyle } = useBlockStyle(node);
   const sizeMap: Record<number, number> = {
     1: theme.typography.sizeH1,
@@ -67,45 +63,39 @@ export const HeadingR = memo(function HeadingR({
     5: theme.typography.sizeBase,
     6: theme.typography.sizeBase,
   };
+  const headingSize = sizeMap[node.depth] ?? theme.typography.sizeBase;
   const headingStyle = [
     {
-      fontSize: sizeMap[node.depth],
+      fontSize: headingSize,
+      // Tighter than body copy (body uses theme.typography.lineHeight ~1.55)
+      // but generous enough that wrapped heading lines — common in RTL /
+      // long headings — don't collide with descenders on the line above.
+      lineHeight: Math.round(headingSize * 1.25),
       fontWeight: '700' as const,
       color: theme.colors.text,
-      marginTop: theme.spacing.lg,
-      marginBottom: theme.spacing.sm,
+      // Inside a SelectableBlock group, block-level margins are swallowed by
+      // the outer LLMSelectableTextView's layout box — the native UITextView
+      // renders attributed text at the top, leaving the remaining height as
+      // empty reserved space. Group children use \n\n separators instead.
+      // Outside a group, only a top margin — the following block brings its
+      // own marginTop and stacking both produces a visible gap between a
+      // heading and its body (code, table, paragraph, etc.).
+      ...(insideGroup ? null : { marginTop: theme.spacing.lg }),
+      // writingDirection drives Unicode bidi on iOS; Android ignores it and
+      // relies on textAlign for horizontal alignment. Set both so RTL
+      // headings hug the right edge on both platforms.
       writingDirection: node.dir,
+      textAlign: (node.dir === 'rtl' ? 'right' : 'left') as 'right' | 'left',
     },
     userStyle,
   ];
-  // When selection is on, use TextInput instead of Text. On iOS multiline
-  // TextInput maps to UITextView, which supports attributed text from
-  // <Text> children AND renders selection highlights correctly (the plain
-  // <Text selectable> does not on Fabric). On plain headings we use `value`
-  // since there's no rich formatting to preserve.
-  if (sel.enabled) {
-    if (allPlainText(node.children)) {
-      return (
-        <TextInput
-          value={flattenPlainText(node.children)}
-          editable={false}
-          multiline
-          scrollEnabled={false}
-          textAlignVertical="top"
-          style={headingStyle}
-        />
-      );
-    }
+  // When selection is on and we're not already inside a parent SelectableBlock,
+  // wrap ourselves so iOS UITextView drives highlighting + custom menu.
+  if (sel.enabled && !insideGroup) {
     return (
-      <TextInput
-        editable={false}
-        multiline
-        scrollEnabled={false}
-        textAlignVertical="top"
-        style={headingStyle}
-      >
-        {children}
-      </TextInput>
+      <SelectableBlock style={headingStyle}>
+        <Text style={headingStyle}>{children}</Text>
+      </SelectableBlock>
     );
   }
   return <Text style={headingStyle}>{children}</Text>;
@@ -121,7 +111,13 @@ export const ParagraphR = memo(function ParagraphR({
   theme: Theme;
 }) {
   const sel = useTextSelection();
+  const insideGroup = useInsideSelectableGroup();
+  const insideListItem = useContext(InsideListItemContext);
   const { style: userStyle } = useBlockStyle(node);
+  // Suppress own vertical margin inside a SelectableBlock group (see HeadingR)
+  // and inside a list item (the item already spaces siblings via its own
+  // marginBottom — doubling it here creates the huge gap between bullets).
+  const suppressMargin = insideGroup || insideListItem;
   // RN forbids <Image> (and most non-Text views) as a child of <Text>. If the
   // paragraph contains any image child, fall back to a View wrapper so each
   // rendered child becomes a block-level sibling instead of a Text descendant.
@@ -131,7 +127,7 @@ export const ParagraphR = memo(function ParagraphR({
       <View
         style={[
           {
-            marginVertical: theme.spacing.sm,
+            ...(suppressMargin ? null : { marginVertical: theme.spacing.sm }),
             gap: theme.spacing.xs,
           },
           userStyle,
@@ -146,43 +142,23 @@ export const ParagraphR = memo(function ParagraphR({
       color: theme.colors.text,
       fontSize: theme.typography.sizeBase,
       lineHeight: theme.typography.sizeBase * theme.typography.lineHeight,
-      marginVertical: theme.spacing.sm,
+      ...(suppressMargin ? null : { marginVertical: theme.spacing.sm }),
+      // writingDirection is iOS-only; Android needs textAlign for RTL blocks
+      // to hug the right edge. Pair them so bidi works on both platforms.
       writingDirection: node.dir,
+      textAlign: (node.dir === 'rtl' ? 'right' : 'left') as 'right' | 'left',
     },
     userStyle,
   ];
-  // Use TextInput when selection is enabled. On iOS multiline TextInput is
-  // a UITextView which accepts <Text> children as attributed text AND
-  // renders selection highlights properly (the plain <Text selectable>
-  // does not on Fabric). For rich paragraphs (with bold/italic/link/code
-  // children) we keep children as-is so formatting is preserved; for
-  // plain-text paragraphs we go through `value` for a tighter render.
-  if (sel.enabled) {
-    if (allPlainText(node.children)) {
-      return (
-        <TextInput
-          value={flattenPlainText(node.children)}
-          editable={false}
-          multiline
-          scrollEnabled={false}
-          textAlignVertical="top"
-          style={paragraphStyle}
-        />
-      );
-    }
-    // Rich children: custom menu actions via react-native-selectable-text
-    // still can't reach these (that lib needs a flat value string).
-    if (sel.actions && sel.actions.length > 0) warnRichParagraphOnce();
+  // When selection is on and we're not already inside a parent SelectableBlock,
+  // wrap ourselves so iOS UITextView / Android TextView drive highlighting.
+  // Native side extracts attributed text from child <Text> subtree, so
+  // bold/italic/link/code formatting is preserved.
+  if (sel.enabled && !insideGroup) {
     return (
-      <TextInput
-        editable={false}
-        multiline
-        scrollEnabled={false}
-        textAlignVertical="top"
-        style={paragraphStyle}
-      >
-        {children}
-      </TextInput>
+      <SelectableBlock style={paragraphStyle}>
+        <Text style={paragraphStyle}>{children}</Text>
+      </SelectableBlock>
     );
   }
   return <Text style={paragraphStyle}>{children}</Text>;
@@ -244,6 +220,10 @@ export const InlineCodeR = memo(function InlineCodeR({
 
 export const CodeR = memo(function CodeR({ node, theme }: { node: CodeNode; theme: Theme }) {
   const { style: userStyle } = useBlockStyle(node);
+  // Code blocks are always LTR regardless of surrounding document direction —
+  // source code reads left-to-right even inside an RTL (Arabic/Persian/Hebrew)
+  // document. Without this, the View inherits RTL from its ancestors and the
+  // monospace content gets right-aligned and visually mangled.
   return (
     <View
       style={[
@@ -252,6 +232,7 @@ export const CodeR = memo(function CodeR({ node, theme }: { node: CodeNode; them
           borderRadius: theme.radii.md,
           padding: theme.spacing.md,
           marginVertical: theme.spacing.sm,
+          direction: 'ltr',
         },
         userStyle,
       ]}
@@ -263,6 +244,8 @@ export const CodeR = memo(function CodeR({ node, theme }: { node: CodeNode; them
             fontFamily: theme.typography.monoFamily,
             color: theme.colors.codeText,
             fontSize: theme.typography.sizeSmall,
+            writingDirection: 'ltr',
+            textAlign: 'left',
           }}
         />
       </HScroll>
@@ -314,7 +297,18 @@ export const ListR = memo(function ListR({
   children?: ReactNode;
   theme: Theme;
 }) {
+  const insideGroup = useInsideSelectableGroup();
   const { style: userStyle } = useBlockStyle(node);
+  // Inside a SelectableBlock group, the outer <Text> (from
+  // SelectableGroupedChildren) forbids <View> children. Render the whole list
+  // as inline Text. Each ListItemR emits its own trailing "\n", so items are
+  // separated naturally and we don't need sibling separator spans here (which
+  // Fabric drops during attributed-text flattening).
+  // Tradeoff: wrapped lines of a long item won't hang under the first
+  // character — they wrap back to the outer Text's left edge.
+  if (insideGroup) {
+    return <Text>{children}</Text>;
+  }
   return (
     <View style={[{ marginVertical: theme.spacing.sm }, userStyle]}>{children}</View>
   );
@@ -329,14 +323,25 @@ export const ListItemR = memo(function ListItemR({
   children?: ReactNode;
   theme: Theme;
 }) {
+  const insideGroup = useInsideSelectableGroup();
   const rtl = node.dir === 'rtl';
   const isTask = node.checked !== undefined && node.checked !== null;
   const marker = isTask ? (node.checked ? '☑' : '☐') : '•';
   const { style: userStyle } = useBlockStyle(node);
-  // ParagraphR (the default child of every list item in our parser) applies
-  // marginVertical: theme.spacing.sm to its text. The marker sits in a Text
-  // of its own with no margin, so without this offset it floats above the
-  // first line of content. Matching top margin puts them on the same line.
+  // Group mode: flex row isn't available inside the outer <Text>. Emit marker
+  // + content + trailing "\n" as inline Text. The newline lives at the end of
+  // the item's own content so Fabric's attributed-text flattening preserves
+  // it (leading "\n" inside a nested Text gets trimmed by RN).
+  if (insideGroup) {
+    return (
+      <Text>
+        {marker}
+        {'  '}
+        {children}
+        {'\n'}
+      </Text>
+    );
+  }
   return (
     <View
       style={[
@@ -352,9 +357,8 @@ export const ListItemR = memo(function ListItemR({
           color: theme.colors.textMuted,
           marginRight: rtl ? 0 : theme.spacing.sm,
           marginLeft: rtl ? theme.spacing.sm : 0,
-          marginTop: theme.spacing.sm,
           width: isTask ? 20 : 16,
-          fontSize: isTask ? theme.typography.sizeBase : theme.typography.sizeBase,
+          fontSize: theme.typography.sizeBase,
           lineHeight: theme.typography.sizeBase * theme.typography.lineHeight,
           textAlign: rtl ? 'right' : 'left',
         }}
@@ -367,7 +371,9 @@ export const ListItemR = memo(function ListItemR({
           text inside to wrap word-by-word. auto lets it start at content
           width and only shrink when capped by an ancestor maxWidth. */}
       <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0 }}>
-        {children}
+        <InsideListItemContext.Provider value={true}>
+          {children}
+        </InsideListItemContext.Provider>
       </View>
     </View>
   );
@@ -405,29 +411,46 @@ export const ImageR = memo(function ImageR({
   // it fails. Capped by maxHeight so portraits can't dominate the screen.
   const [ratio, setRatio] = useState<number | null>(null);
   const { style: userStyle } = useBlockStyle(node);
+  const { image: imageConfig } = useContext(RendererContext);
+  const imageStyle = {
+    width: '100%',
+    aspectRatio: ratio ?? 16 / 9,
+    maxHeight: 400,
+    resizeMode: 'contain',
+    borderRadius: theme.radii.sm,
+    backgroundColor: theme.colors.codeBackground,
+  } as unknown as object;
+  const img = (
+    <Image
+      source={{ uri: node.url }}
+      accessibilityLabel={node.alt}
+      onLoad={(e: unknown) => {
+        const src = (e as { nativeEvent?: { source?: { width: number; height: number } } })
+          ?.nativeEvent?.source;
+        if (src && src.width > 0 && src.height > 0) {
+          setRatio(src.width / src.height);
+        }
+      }}
+      style={imageStyle}
+    />
+  );
+  const interactive = !!(imageConfig.onPress || imageConfig.onLongPress);
   return (
     <View style={[{ marginVertical: theme.spacing.sm }, userStyle]}>
-      <Image
-        source={{ uri: node.url }}
-        accessibilityLabel={node.alt}
-        onLoad={(e: unknown) => {
-          const src = (e as { nativeEvent?: { source?: { width: number; height: number } } })
-            ?.nativeEvent?.source;
-          if (src && src.width > 0 && src.height > 0) {
-            setRatio(src.width / src.height);
+      {interactive ? (
+        <Pressable
+          onPress={imageConfig.onPress ? () => imageConfig.onPress!(node) : undefined}
+          onLongPress={
+            imageConfig.onLongPress ? () => imageConfig.onLongPress!(node) : undefined
           }
-        }}
-        style={
-          {
-            width: '100%',
-            aspectRatio: ratio ?? 16 / 9,
-            maxHeight: 400,
-            resizeMode: 'contain',
-            borderRadius: theme.radii.sm,
-            backgroundColor: theme.colors.codeBackground,
-          } as unknown as object
-        }
-      />
+          accessibilityRole="imagebutton"
+          accessibilityLabel={node.alt}
+        >
+          {img}
+        </Pressable>
+      ) : (
+        img
+      )}
     </View>
   );
 }, memoEqual);
@@ -527,6 +550,7 @@ export const TableCellR = memo(function TableCellR({
 }) {
   const colWidth = useContext(TableColumnWidthContext);
   const sel = useTextSelection();
+  const insideGroup = useInsideSelectableGroup();
   const { style: userStyle } = useBlockStyle(node);
   const cellTextStyle = {
     color: theme.colors.text,
@@ -545,27 +569,10 @@ export const TableCellR = memo(function TableCellR({
         userStyle,
       ]}
     >
-      {sel.enabled ? (
-        allPlainText(node.children) ? (
-          <TextInput
-            value={flattenPlainText(node.children)}
-            editable={false}
-            multiline
-            scrollEnabled={false}
-            textAlignVertical="top"
-            style={cellTextStyle}
-          />
-        ) : (
-          <TextInput
-            editable={false}
-            multiline
-            scrollEnabled={false}
-            textAlignVertical="top"
-            style={cellTextStyle}
-          >
-            {children}
-          </TextInput>
-        )
+      {sel.enabled && !insideGroup ? (
+        <SelectableBlock style={cellTextStyle}>
+          <Text style={cellTextStyle}>{children}</Text>
+        </SelectableBlock>
       ) : (
         <Text style={cellTextStyle}>{children}</Text>
       )}

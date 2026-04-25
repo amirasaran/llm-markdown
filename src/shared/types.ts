@@ -193,6 +193,15 @@ export interface TextSelectionConfig {
 /** Shorthand: `textSelection={true}` ≡ `{ enabled: true }`. */
 export type TextSelection = boolean | TextSelectionConfig;
 
+export interface ImageConfig {
+  /** Fired on tap (native) / click (web). */
+  onPress?: (node: ImageNode) => void;
+  /** Fired on long-press (native) / long-press or right-click (web).
+   *  On web the handler is wired to `contextmenu` plus a 500ms pointer-down
+   *  timer, which covers mouse right-click and mobile long-press. */
+  onLongPress?: (node: ImageNode) => void;
+}
+
 export interface CardConfig {
   animation?: CardAnimationPreset;
   enterDuration?: number;
@@ -244,6 +253,10 @@ export interface LLMMarkdownProps {
    *  renderer. Lighter weight than `components` — use this when you only
    *  want to tweak visuals, not restructure the DOM. */
   blockStyles?: BlockStyles;
+  /** Image interaction handlers (tap/click and long-press/right-click). When
+   *  at least one handler is supplied, the default ImageR wraps its `<img>` /
+   *  RN `<Image>` in a pressable so the callbacks fire. */
+  image?: ImageConfig;
 }
 
 export type DeepPartial<T> = T extends object

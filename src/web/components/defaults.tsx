@@ -1,5 +1,6 @@
-import { memo, type CSSProperties, type ReactNode } from 'react';
+import { memo, useContext, useRef, type CSSProperties, type ReactNode } from 'react';
 import type { Theme } from '../../shared/types';
+import { RendererContext } from '../../core/registry/componentRegistry';
 import type {
   HeadingNode,
   ParagraphNode,
@@ -281,14 +282,79 @@ export const LinkR = memo(function LinkR({
 
 export const ImageR = memo(function ImageR({ node }: { node: ImageNode; theme: Theme }) {
   const { style: userStyle, className } = useBlockStyle(node);
-  return (
+  const { image: imageConfig } = useContext(RendererContext);
+  const interactive = !!(imageConfig.onPress || imageConfig.onLongPress);
+  // Long-press on touch = 500ms pointerdown without cancel. On desktop the
+  // native `contextmenu` event covers right-click. The `longPressFiredRef`
+  // flag suppresses the click that would otherwise follow the pointerup.
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  const img = (
     <img
       src={node.url}
       alt={node.alt}
       title={node.title}
       className={className}
-      style={{ maxWidth: '100%', ...(userStyle as CSSProperties | undefined) }}
+      style={{
+        maxWidth: '100%',
+        display: 'block',
+        ...(userStyle as CSSProperties | undefined),
+      }}
+      draggable={false}
     />
+  );
+
+  if (!interactive) return img;
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      aria-label={node.alt || node.title || 'image'}
+      style={{ cursor: 'pointer', display: 'inline-block', userSelect: 'none' }}
+      onClick={(e) => {
+        if (longPressFiredRef.current) {
+          longPressFiredRef.current = false;
+          e.preventDefault();
+          return;
+        }
+        imageConfig.onPress?.(node);
+      }}
+      onContextMenu={(e) => {
+        if (imageConfig.onLongPress) {
+          e.preventDefault();
+          imageConfig.onLongPress(node);
+        }
+      }}
+      onPointerDown={() => {
+        if (!imageConfig.onLongPress) return;
+        longPressFiredRef.current = false;
+        clearLongPress();
+        longPressTimer.current = setTimeout(() => {
+          longPressFiredRef.current = true;
+          imageConfig.onLongPress?.(node);
+        }, 500);
+      }}
+      onPointerUp={clearLongPress}
+      onPointerLeave={clearLongPress}
+      onPointerCancel={clearLongPress}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          imageConfig.onPress?.(node);
+        }
+      }}
+    >
+      {img}
+    </span>
   );
 }, memoEqual);
 

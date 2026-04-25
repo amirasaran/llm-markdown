@@ -1,6 +1,6 @@
 import type { CardAnimationPreset, Direction } from 'llm-markdown/native';
 
-export type Route = 'playground' | 'chat';
+export type Route = 'home' | 'playground' | 'chat' | 'dom' | 'chat-dom';
 
 export type ChatRole = 'user' | 'assistant';
 

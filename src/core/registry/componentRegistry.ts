@@ -4,6 +4,7 @@ import type {
   BlockStyles,
   ComponentOverrides,
   DirectiveRegistry,
+  ImageConfig,
   TextSelectionConfig,
   Theme,
 } from '../../shared/types';
@@ -18,6 +19,7 @@ export interface RendererContextValue {
   textSelection: TextSelectionConfig;
   blockSlots: BlockSlots;
   blockStyles: BlockStyles;
+  image: ImageConfig;
   onHeadingInView?: (id: string, depth: number, text: string) => void;
 }
 
@@ -29,6 +31,7 @@ export const RendererContext = createContext<RendererContextValue>({
   textSelection: DISABLED_TEXT_SELECTION,
   blockSlots: {},
   blockStyles: {},
+  image: {},
 });
 
 export function useRenderer(): RendererContextValue {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   Share,
@@ -20,7 +21,7 @@ import { pick } from './theme';
 import { Drawer } from './Drawer';
 import { SettingsPanel } from './SettingsPanel';
 
-export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
+export function Playground({ onBack }: { onBack: () => void }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [presetId, setPresetId] = useState(presets[0]!.id);
@@ -186,7 +187,7 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.page }}>
-      <Header dark={settings.dark} onOpenSidebar={() => setDrawerOpen(true)} onOpenChat={onOpenChat} />
+      <Header dark={settings.dark} onOpenSidebar={() => setDrawerOpen(true)} onBack={onBack} />
       <ScrollView
         contentContainerStyle={{ padding: 16, gap: 16 }}
         keyboardShouldPersistTaps="handled"
@@ -429,7 +430,18 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
           directives={directives}
           theme={settings.dark ? darkTheme : undefined}
           direction={settings.direction}
-          textSelection
+          textSelection={{
+            enabled: true,
+            actions: [
+              { label: 'Ask AI', onPress: (t) => Alert.alert('Ask AI', t) },
+              { label: 'Quote', onPress: (t) => Alert.alert('Quoted', t) },
+              { label: 'Share', onPress: (t) => Share.share({ message: t }) },
+            ],
+          }}
+          image={{
+            onPress: (node) => Alert.alert('Image tap', node.url),
+            onLongPress: (node) => Alert.alert('Image long-press', node.url),
+          }}
           blockSlots={blockSlots}
           blockStyles={blockStylesDemo}
           card={{ animation: settings.animation, layoutAnimation: settings.layoutAnimation }}
@@ -464,25 +476,6 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
           }
         />
 
-        <Pressable
-          onPress={onOpenChat}
-          style={({ pressed }) => ({
-            padding: 14,
-            borderRadius: 999,
-            backgroundColor: c.accent,
-            alignItems: 'center',
-            opacity: pressed ? 0.85 : 1,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.25,
-            shadowRadius: 20,
-            elevation: 6,
-          })}
-        >
-          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 15 }}>
-            Try it inside a chat conversation →
-          </Text>
-        </Pressable>
       </ScrollView>
 
       <Drawer
@@ -500,11 +493,11 @@ export function Playground({ onOpenChat }: { onOpenChat: () => void }) {
 function Header({
   dark,
   onOpenSidebar,
-  onOpenChat,
+  onBack,
 }: {
   dark: boolean;
   onOpenSidebar: () => void;
-  onOpenChat: () => void;
+  onBack: () => void;
 }) {
   const c = pick(dark);
   return (
@@ -569,17 +562,19 @@ function Header({
         <Text style={{ color: c.text, fontSize: 16, fontWeight: '700' }}>★</Text>
       </Pressable>
       <Pressable
-        onPress={onOpenChat}
-        accessibilityLabel="Open chat demo"
+        onPress={onBack}
+        accessibilityLabel="Back to home"
         style={({ pressed }) => ({
           paddingHorizontal: 12,
           paddingVertical: 6,
           borderRadius: 999,
-          backgroundColor: c.accent,
+          borderWidth: 1,
+          borderColor: c.sidebarBorder,
+          backgroundColor: dark ? '#1F1F27' : '#ffffff',
           opacity: pressed ? 0.85 : 1,
         })}
       >
-        <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Chat →</Text>
+        <Text style={{ color: c.text, fontSize: 13, fontWeight: '600' }}>← Home</Text>
       </Pressable>
     </View>
   );

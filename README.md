@@ -24,6 +24,10 @@ import { LLMMarkdown } from 'llm-markdown/web'; // or 'llm-markdown/native'
       ],
     },
   }}
+  image={{
+    onPress: (n) => openLightbox(n.url),
+    onLongPress: (n) => showImageMenu(n),
+  }}
 />
 ```
 
@@ -110,6 +114,7 @@ The API surface is identical across platforms.
 - ✅ **Text selection** — system menu + optional custom actions ("Copy", "Ask AI"), continuous selection across text blocks on native (ChatGPT-style)
 - ✅ **Per-block toolbars** — `blockSlots` with Copy / Run / Export for code, tables, images
 - ✅ **Per-block style tweaks** — `blockStyles` accepts `{ style, className }` (or functions of the node) merged over default renderers; no component override needed
+- ✅ **Image interactions** — `image={{ onPress, onLongPress }}` wires tap / click and long-press / right-click on both platforms (500ms pointerdown + `contextmenu` on web, RN `Pressable` on native)
 - ✅ **Theme tokens** — colors, spacing, radii, typography, motion
 - ✅ **Error-bounded directives** — one broken chart does not blank the message
 - ✅ **Zero runtime deps** (core); React Native animations use the peer `react-native-reanimated` if present
@@ -139,7 +144,13 @@ Two runnable examples live under [`examples/`](./examples/):
 pnpm install
 pnpm build            # build the library once
 pnpm example:web      # opens the Vite playground
-pnpm example:native   # opens the Expo playground
+pnpm example:native   # opens the Expo playground (Metro)
+```
+
+The native example's `ios/` and `android/` folders are gitignored Expo prebuild output. Run `expo prebuild` once before your first `pnpm example:native` (or before `expo run:ios` / `expo run:android`) to generate them:
+
+```bash
+pnpm --filter llm-markdown-example-native exec expo prebuild
 ```
 
 ---

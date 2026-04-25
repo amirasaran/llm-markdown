@@ -62,6 +62,7 @@ interface LLMMarkdownProps {
   textSelection?: boolean | TextSelectionConfig;   // see below
   blockSlots?: BlockSlots;                         // see below
   blockStyles?: BlockStyles;                       // per-node-type style + className overrides
+  image?: ImageConfig;                             // image tap / long-press handlers
 }
 
 interface BlockStyles {
@@ -104,6 +105,22 @@ interface BlockAction<N> {
 //   "Copy / Run / Export" case.
 // - Currently exposed for code, table, and image. Other block types can be
 //   customized via the existing `components` override map.
+
+interface ImageConfig {
+  onPress?: (node: ImageNode) => void;       // tap / click
+  onLongPress?: (node: ImageNode) => void;   // long-press / right-click
+}
+
+// Image interaction details:
+// - Default ImageR only wraps in a pressable when at least one handler is set,
+//   so plain images stay plain.
+// - WEB: onPress fires on `click`; onLongPress fires on either a 500ms
+//   pointerdown hold (mobile) OR the native `contextmenu` event (desktop
+//   right-click). If long-press fires, the follow-up click is suppressed.
+//   Keyboard activation (Enter / Space) also fires onPress.
+// - NATIVE: wraps RN <Image> in <Pressable> with accessibilityRole="imagebutton".
+//   onPress / onLongPress map to RN's built-in gesture handlers.
+// - Handler receives the full ImageNode: { url, alt, title, ... }.
 
 interface TextSelectionConfig {
   enabled: boolean;
@@ -432,6 +449,19 @@ SECTION 12 — COMMON RECIPES
   import { parseMarkdown, assignIds, annotateDirection } from 'llm-markdown';
   const tree = annotateDirection(assignIds(parseMarkdown(source)));
   // Ship `tree` to the client; rehydrate with `useLLMMarkdown` or render manually.
+
+12.6 — Open a lightbox / context menu on image tap + long-press
+
+  <LLMMarkdown
+    text={text}
+    image={{
+      onPress: (node) => openLightbox(node.url),
+      onLongPress: (node) => showMenu({ url: node.url, alt: node.alt }),
+    }}
+  />
+  // Works the same on web (click + 500ms pointerdown OR contextmenu) and
+  // native (RN Pressable onPress + onLongPress). Handler gets the full
+  // ImageNode including alt and title.
 
 ================================================================
 SECTION 13 — DEBUGGING CHECKLIST

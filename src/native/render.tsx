@@ -1,21 +1,15 @@
-import { Fragment, useMemo, type ReactNode, type ComponentType, Component } from 'react';
+import { Fragment, type ReactNode, type ComponentType, Component } from 'react';
 import type {
   AnyNode,
   RootNode,
   DirectiveNode,
-  ParagraphNode,
-  HeadingNode,
-  TextNode,
-  InlineCodeNode,
-  LinkNode,
-  ListNode,
-  ListItemNode,
   NodeType,
 } from '../core/parser/ast';
 import type { DirectiveComponentProps, NodeRendererProps, Theme } from '../shared/types';
 import { useRenderer } from '../core/registry/componentRegistry';
-import { Text, TextInput } from './rn';
+import { Text } from './rn';
 import * as D from './components/defaults';
+import { SelectableBlock } from './components/selectableText';
 
 export function RenderNode({ node }: { node: AnyNode }): ReactNode {
   const ctx = useRenderer();
@@ -23,11 +17,11 @@ export function RenderNode({ node }: { node: AnyNode }): ReactNode {
 
   if (node.type === 'root') {
     const rootChildren = (node as RootNode).children;
-    // When text selection is enabled, group consecutive text-like blocks
-    // (paragraph/heading/hr/list) into a single TextInput so selection can
-    // flow across them ChatGPT-style. Non-text blocks (code, table,
-    // blockquote, image, directive, html) stay as their own renderers and
-    // intentionally break the selection range — matches ChatGPT's own UX.
+    // With text selection on, merge consecutive text-like blocks into a
+    // single native LLMSelectableTextView so iOS UITextView treats them as
+    // one selection range (selection flows across them ChatGPT-style). Blocks
+    // that can't be inlined (code, table, blockquote, image, directive)
+    // intentionally break the group.
     if (ctx.textSelection.enabled) {
       return <SelectableGroupedChildren nodes={rootChildren} />;
     }
@@ -197,20 +191,52 @@ class ErrorBoundary extends Component<EBProps, EBState> {
   render() { return this.state.hasError ? this.props.fallback : this.props.children; }
 }
 
-// ---- selectable grouping --------------------------------------------------
+// ---- cross-block selection grouping ---------------------------------------
 //
-// When textSelection is enabled, consecutive text-like blocks are rendered
-// as children of a single <TextInput> so iOS (UITextView) treats them as
-// one attributed-text range. Selection + highlight flow across blocks.
-// Non-groupable blocks (backgrounds, 2D layouts, custom renderers) break
-// the grouping and render via the normal pipeline.
+// Wrap consecutive text-like blocks in a single SelectableBlock so the native
+// LLMSelectableTextView shows them as one attributed-text UITextView. The
+// inner block renderers detect the surrounding context and skip their own
+// per-block wrap.
 
+// Blocks that can flatten into the outer <Text> of a SelectableBlock group.
+// Lists are included in text-mode (ListR/ListItemR detect insideGroup and
+// render inline Text instead of View/flex-row) — see defaults.tsx. Thematic
+// breaks still require a rule line that can't live inside Text, so they
+// break the group.
 const GROUPABLE_TYPES: ReadonlySet<NodeType> = new Set<NodeType>([
   'paragraph',
   'heading',
-  'thematicBreak',
   'list',
 ]);
+
+/** A paragraph whose AST contains a block child (image, HTML, etc.) is rendered
+ *  by ParagraphR as a View, not a Text, so it can't be flattened into the
+ *  outer UITextView's attributed text. Excluding it from the group keeps the
+ *  image visible and selection still works per-block.
+ *
+ *  Lists only group when every item is a single paragraph with inline-only
+ *  children — anything else (nested list, image, code, blockquote, table)
+ *  would need a View inside Text. */
+function isGroupable(node: AnyNode): boolean {
+  if (!GROUPABLE_TYPES.has(node.type as NodeType)) return false;
+  if (node.type === 'paragraph') {
+    const children = (node as { children?: { type: string }[] }).children ?? [];
+    if (children.some((c) => c.type === 'image' || c.type === 'html')) return false;
+  }
+  if (node.type === 'list') {
+    type Item = { children?: Array<{ type: string; children?: Array<{ type: string }> }> };
+    const items = (node as { children?: Item[] }).children ?? [];
+    for (const item of items) {
+      const kids = item.children ?? [];
+      if (kids.length !== 1) return false;
+      const only = kids[0];
+      if (!only || only.type !== 'paragraph') return false;
+      const inline = only.children ?? [];
+      if (inline.some((c) => c.type === 'image' || c.type === 'html')) return false;
+    }
+  }
+  return true;
+}
 
 type Group =
   | { kind: 'text'; nodes: AnyNode[] }
@@ -219,24 +245,54 @@ type Group =
 function groupBlocks(nodes: AnyNode[]): Group[] {
   const out: Group[] = [];
   let buf: AnyNode[] = [];
+  // A group of size 1 gains nothing from the outer-Text wrapper (no
+  // cross-block selection to enable) and only introduces baseline-font
+  // measurement bugs. Emit single groupables as their own block so the
+  // per-block renderer handles selection + layout.
+  const flushBuf = () => {
+    if (buf.length >= 2) {
+      out.push({ kind: 'text', nodes: buf });
+    } else if (buf.length === 1) {
+      out.push({ kind: 'block', node: buf[0]! });
+    }
+    buf = [];
+  };
   for (const n of nodes) {
-    if (GROUPABLE_TYPES.has(n.type as NodeType)) {
+    if (isGroupable(n)) {
+      // Break the group on direction change. Nested <Text> spans inside a
+      // single outer <Text> share one Android TextView and can't reliably
+      // get per-span textAlign — mixing RTL + LTR paragraphs in one group
+      // leaves one of them visually mis-aligned. Splitting at the dir
+      // boundary keeps each run internally consistent.
+      const prev = buf[buf.length - 1];
+      const nodeDir = (n as { dir?: string }).dir;
+      const prevDir = prev ? (prev as { dir?: string }).dir : undefined;
+      if (prev && nodeDir && prevDir && nodeDir !== prevDir) {
+        flushBuf();
+      }
       buf.push(n);
     } else {
-      if (buf.length > 0) {
-        out.push({ kind: 'text', nodes: buf });
-        buf = [];
-      }
+      flushBuf();
       out.push({ kind: 'block', node: n });
     }
   }
-  if (buf.length > 0) out.push({ kind: 'text', nodes: buf });
+  flushBuf();
   return out;
 }
 
 function SelectableGroupedChildren({ nodes }: { nodes: AnyNode[] }) {
   const { theme } = useRenderer();
-  const groups = useMemo(() => groupBlocks(nodes), [nodes]);
+  const groups = groupBlocks(nodes);
+  // Baseline style on the outer Text — Fabric measures nested Text as
+  // attributed-string spans of this parent, so it must advertise the
+  // largest expected line metrics. Using paragraph's lineHeight also
+  // avoids the "truncated last heading" bug where Yoga under-measures
+  // the final span because the outer Text inherited the RN default 14pt.
+  const outerTextStyle = {
+    color: theme.colors.text,
+    fontSize: theme.typography.sizeBase,
+    lineHeight: theme.typography.sizeBase * theme.typography.lineHeight,
+  };
   return (
     <>
       {groups.map((g, gi) => {
@@ -247,144 +303,46 @@ function SelectableGroupedChildren({ nodes }: { nodes: AnyNode[] }) {
             </Fragment>
           );
         }
+        // Wrap all grouped blocks inside ONE outer <Text>. Inner Texts (from
+        // HeadingR / ParagraphR / inline renderers) become attributed-string
+        // spans of this single Text, so Yoga measures them as one block with
+        // height matching the UITextView's attributed-text rendering — no
+        // leftover reserved space at the bottom, no truncation at the top.
+        //
+        // Per-block margins are suppressed inside a group, so the group
+        // wrapper itself owns the vertical spacing. Extra top space when the
+        // group leads with a heading — the individual HeadingR would have
+        // given it marginTop:lg outside a group. Zero bottom space when the
+        // group ends with a heading — the following block has its own top
+        // margin, and doubling them creates a visible gap between the
+        // heading and its body (code block, table, etc.).
+        const leadsWithHeading = g.nodes[0]?.type === 'heading';
+        const endsWithHeading = g.nodes[g.nodes.length - 1]?.type === 'heading';
+        const groupStyle = {
+          marginTop: leadsWithHeading ? theme.spacing.lg : theme.spacing.sm,
+          marginBottom: endsWithHeading ? 0 : theme.spacing.sm,
+        };
         return (
-          <TextInput
-            key={`g-${gi}`}
-            editable={false}
-            multiline
-            scrollEnabled={false}
-            textAlignVertical="top"
-            style={{ marginVertical: theme.spacing.sm }}
-          >
-            {g.nodes.map((n, i) => (
-              <Fragment key={n.id ?? `n-${i}`}>
-                {inlineRenderBlock(n, theme)}
-                {i < g.nodes.length - 1 ? <Text>{'\n\n'}</Text> : null}
-              </Fragment>
-            ))}
-          </TextInput>
+          <SelectableBlock key={`g-${gi}`} style={groupStyle}>
+            <Text style={outerTextStyle}>
+              {g.nodes.map((n, i) => {
+                // Default sibling separator is a blank line (\n\n). Drop to a
+                // single \n when the previous sibling is a heading so the
+                // heading's body follows it tightly, matching typical typeset.
+                const prev = i > 0 ? g.nodes[i - 1] : undefined;
+                const sep = !prev ? '' : prev.type === 'heading' ? '\n' : '\n\n';
+                return (
+                  <Fragment key={n.id}>
+                    {sep}
+                    <RenderNode node={n} />
+                  </Fragment>
+                );
+              })}
+            </Text>
+          </SelectableBlock>
         );
       })}
     </>
   );
 }
 
-/** Render a block-level node as an attributed <Text> element suitable for
- *  nesting inside a parent <TextInput>. Used only inside text-groups. */
-function inlineRenderBlock(node: AnyNode, theme: Theme): ReactNode {
-  if (node.type === 'paragraph') {
-    const p = node as ParagraphNode;
-    return (
-      <Text
-        style={{
-          color: theme.colors.text,
-          fontSize: theme.typography.sizeBase,
-          lineHeight: theme.typography.sizeBase * theme.typography.lineHeight,
-        }}
-      >
-        {inlineRenderMany(p.children as AnyNode[], theme)}
-      </Text>
-    );
-  }
-  if (node.type === 'heading') {
-    const h = node as HeadingNode;
-    const sizeMap: Record<number, number> = {
-      1: theme.typography.sizeH1,
-      2: theme.typography.sizeH2,
-      3: theme.typography.sizeH3,
-      4: theme.typography.sizeH4,
-      5: theme.typography.sizeBase,
-      6: theme.typography.sizeBase,
-    };
-    return (
-      <Text style={{ color: theme.colors.text, fontSize: sizeMap[h.depth], fontWeight: '700' }}>
-        {inlineRenderMany(h.children as AnyNode[], theme)}
-      </Text>
-    );
-  }
-  if (node.type === 'thematicBreak') {
-    return <Text style={{ color: theme.colors.textMuted }}>{'\n──────────\n'}</Text>;
-  }
-  if (node.type === 'list') {
-    const list = node as ListNode;
-    const start = list.start ?? 1;
-    return (
-      <Text>
-        {list.children.map((item, i) => {
-          const marker = list.ordered ? `${start + i}. ` : '•  ';
-          const li = item as ListItemNode;
-          return (
-            <Text key={li.id ?? i}>
-              {marker}
-              {inlineRenderMany(li.children as AnyNode[], theme)}
-              {i < list.children.length - 1 ? '\n' : ''}
-            </Text>
-          );
-        })}
-      </Text>
-    );
-  }
-  return null;
-}
-
-/** Render an inline (or nested block) node as attributed text. */
-function inlineRenderOne(node: AnyNode, theme: Theme): ReactNode {
-  switch (node.type) {
-    case 'text':
-      return (node as TextNode).value;
-    case 'break':
-      return '\n';
-    case 'strong':
-      return (
-        <Text style={{ fontWeight: '700' }}>
-          {inlineRenderMany(((node as { children?: AnyNode[] }).children ?? []) as AnyNode[], theme)}
-        </Text>
-      );
-    case 'emphasis':
-      return (
-        <Text style={{ fontStyle: 'italic' }}>
-          {inlineRenderMany(((node as { children?: AnyNode[] }).children ?? []) as AnyNode[], theme)}
-        </Text>
-      );
-    case 'delete':
-      return (
-        <Text style={{ textDecorationLine: 'line-through' }}>
-          {inlineRenderMany(((node as { children?: AnyNode[] }).children ?? []) as AnyNode[], theme)}
-        </Text>
-      );
-    case 'inlineCode':
-      return (
-        <Text
-          style={{
-            fontFamily: theme.typography.monoFamily,
-            color: theme.colors.codeText,
-            backgroundColor: theme.colors.codeBackground,
-          }}
-        >
-          {(node as InlineCodeNode).value}
-        </Text>
-      );
-    case 'link':
-      return (
-        <Text style={{ color: theme.colors.link, textDecorationLine: 'underline' }}>
-          {inlineRenderMany((node as LinkNode).children as AnyNode[], theme)}
-        </Text>
-      );
-    // Block-level nodes reached as descendants (e.g. list-item → paragraph):
-    // render their children inline without their own block styling.
-    case 'paragraph':
-    case 'listItem':
-      return inlineRenderMany(
-        ((node as { children?: AnyNode[] }).children ?? []) as AnyNode[],
-        theme
-      );
-    default:
-      return null;
-  }
-}
-
-function inlineRenderMany(nodes: AnyNode[], theme: Theme): ReactNode {
-  return nodes.map((n, i) => (
-    <Fragment key={n.id ?? `m-${i}`}>{inlineRenderOne(n, theme)}</Fragment>
-  ));
-}

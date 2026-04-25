@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { Settings, ChatMessage } from '../types';
 import { pick } from '../theme';
 import { resolveResponse } from '../../shared/slash-commands';
-import { MessageBubble } from './MessageBubble';
+import { MessageBubble, type MessageRenderer } from './MessageBubble';
 import { Composer } from './Composer';
 
 let messageCounter = 0;
@@ -26,10 +26,12 @@ export function Chat({
   settings,
   onOpenSidebar,
   onBack,
+  renderer = 'native',
 }: {
   settings: Settings;
   onOpenSidebar: () => void;
   onBack: () => void;
+  renderer?: MessageRenderer;
 }) {
   const c = pick(settings.dark);
   const [messages, setMessages] = useState<ChatMessage[]>([greeting]);
@@ -120,7 +122,7 @@ export function Chat({
         contentContainerStyle={{ paddingVertical: 12, gap: 2 }}
       >
         {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} settings={settings} />
+          <MessageBubble key={m.id} message={m} settings={settings} renderer={renderer} />
         ))}
       </ScrollView>
       <Composer dark={settings.dark} onSend={handleSend} />

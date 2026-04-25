@@ -10,6 +10,7 @@ import { normalizeTextSelection } from '../core/textSelection';
 import { Card } from './Card';
 import { RenderNode } from './render';
 
+
 export function LLMMarkdown(props: LLMMarkdownProps) {
   const {
     text,
@@ -26,6 +27,7 @@ export function LLMMarkdown(props: LLMMarkdownProps) {
     textSelection,
     blockSlots,
     blockStyles,
+    image,
   } = props;
 
   const mergedTheme = useMemo(() => mergeTheme(defaultTheme, theme), [theme]);
@@ -44,10 +46,11 @@ export function LLMMarkdown(props: LLMMarkdownProps) {
       textSelection: normalizedSelection,
       blockSlots: blockSlots ?? {},
       blockStyles: blockStyles ?? {},
+      image: image ?? {},
     };
     if (props.onHeadingInView) base.onHeadingInView = props.onHeadingInView;
     return base;
-  }, [components, directives, mergedTheme, direction, normalizedSelection, blockSlots, blockStyles, props.onHeadingInView]);
+  }, [components, directives, mergedTheme, direction, normalizedSelection, blockSlots, blockStyles, image, props.onHeadingInView]);
 
   return (
     <RendererContext.Provider value={ctxValue}>
@@ -84,6 +87,7 @@ export type {
   BlockAction,
   BlockStyles,
   BlockStyleConfig,
+  ImageConfig,
   Theme,
   Direction,
   BlockNode,

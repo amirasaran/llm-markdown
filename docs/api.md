@@ -28,6 +28,8 @@ interface LLMMarkdownProps {
   virtualize?: boolean;                  // native only, experimental
   textSelection?: boolean | TextSelectionConfig;
   blockSlots?: BlockSlots;
+  blockStyles?: BlockStyles;
+  image?: ImageConfig;
   onHeadingInView?: (id: string, depth: number, text: string) => void;
   onDirectiveRender?: (node: DirectiveNode) => ReactNode | null | undefined;
 }
@@ -47,6 +49,8 @@ interface LLMMarkdownProps {
 | `virtualize`        | (Native only, experimental) If `true`, uses a virtualized list for block nodes > 80.              |
 | `textSelection`     | Enable text selection + optional custom action menu. See below.                                   |
 | `blockSlots`        | Per-block-type slots (before / after / actions toolbar). See below.                               |
+| `blockStyles`       | Per-block-type style + className overrides merged over defaults. See below.                       |
+| `image`             | Image tap / long-press handlers (`onPress`, `onLongPress`). See below.                            |
 | `onHeadingInView`   | Fires when a heading is visible; useful for TOCs.                                                 |
 | `onDirectiveRender` | Intercept directive rendering; return a `ReactNode` to replace, `null`/`undefined` to let it run. |
 
@@ -174,6 +178,32 @@ Example:
 ```
 
 When you need full layout control, use `components` to replace the renderer entirely; when you only need cosmetic tweaks, use `blockStyles`.
+
+### `image`
+
+Tap / click and long-press handlers for rendered images. Useful for opening a lightbox, previewing alt text, copying the URL, or showing a context menu.
+
+```ts
+interface ImageConfig {
+  onPress?: (node: ImageNode) => void;
+  onLongPress?: (node: ImageNode) => void;
+}
+```
+
+```tsx
+<LLMMarkdown
+  text={text}
+  image={{
+    onPress: (node) => openLightbox(node.url),
+    onLongPress: (node) => showImageMenu(node),
+  }}
+/>
+```
+
+- `node` is the full `ImageNode`, so you have `url`, `alt`, `title` in the handler.
+- The default `ImageR` only wraps in a pressable when at least one handler is supplied — images without handlers stay plain for accessibility/semantics.
+- **Web**: `onPress` fires on `click`; `onLongPress` fires on either a 500ms `pointerdown` hold (covers mobile) **or** `contextmenu` (covers desktop right-click). If long-press fires, the follow-up click is suppressed so handlers don't double-fire. Keyboard activation (`Enter` / `Space`) also triggers `onPress`.
+- **Native**: wraps the RN `<Image>` in a `<Pressable>` with `accessibilityRole="imagebutton"`. `onPress` / `onLongPress` map directly to RN's gesture handlers.
 
 ### `CardConfig`
 

@@ -7,8 +7,16 @@
     "scheme": "streammarkdown",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": { "supportsTablet": true, "bundleIdentifier": "dev.streammarkdown.example" },
-    "android": { "package": "dev.streammarkdown.example" },
-    "web": { "bundler": "metro" }
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.streammarkdown.example",
+      "appleTeamId": "326DXNCR72"
+    },
+    "android": {
+      "package": "dev.streammarkdown.example"
+    },
+    "web": {
+      "bundler": "metro"
+    }
   }
 }

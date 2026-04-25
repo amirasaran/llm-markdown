@@ -547,6 +547,29 @@ You
 :::
 `;
 
+export const htmlDirectiveMarkdown = `# HTML directive (DOM only)
+
+When you render markdown with \`LLMMarkdownDom\`, a built-in \`:::html\` directive is registered automatically. Its body is injected into the DOM via \`dangerouslySetInnerHTML\` — handy for one-off embeds that plain markdown can't express.
+
+:::html
+<div style="padding:12px;border-radius:8px;background:linear-gradient(135deg,#6366F1,#A855F7);color:white;font-weight:600;">
+  Rendered from raw HTML inside the WebView.
+</div>
+:::
+
+You can keep mixing markdown around it:
+
+- Markdown *above* and **below** the directive still renders normally.
+- Streaming tolerates unclosed HTML blocks — they flush when the directive closes.
+
+:::html
+<details>
+  <summary style="cursor:pointer;font-weight:600;">Click to expand native <code>&lt;details&gt;</code></summary>
+  <p>This is raw HTML inside markdown. The native renderer silently ignores it; the DOM renderer runs it in its WebView.</p>
+</details>
+:::
+`;
+
 export const fullMarkdown = demoMarkdown;
 
 export interface Preset {
@@ -569,6 +592,7 @@ export const presets: Preset[] = [
   { id: 'align', label: 'Table alignment stress test', text: tableAlignmentMarkdown },
   { id: 'directives', label: 'Directives (charts, callouts)', text: directivesMarkdown },
   { id: 'email', label: 'Email directive', text: emailMarkdown },
+  { id: 'html', label: 'HTML directive (DOM)', text: htmlDirectiveMarkdown },
   { id: 'images', label: 'Images', text: imagesMarkdown },
   { id: 'streaming', label: 'Streaming edge cases', text: streamingEdgeMarkdown },
 ];

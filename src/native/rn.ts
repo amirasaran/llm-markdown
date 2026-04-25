@@ -37,7 +37,10 @@ type ImageLike = ComponentType<{
 type PressableLike = ComponentType<{
   children?: ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
   style?: unknown;
+  accessibilityRole?: string;
+  accessibilityLabel?: string;
 }>;
 type TextInputLike = ComponentType<{
   children?: ReactNode;
